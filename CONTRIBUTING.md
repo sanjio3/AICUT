@@ -16,9 +16,36 @@ AICUT 以 Skill 目录形式分发，仓库根就是 Skill 根。贡献之前先
 
 特效任务分两档，由负责人在 issue 里判定，同学不要自己挑。A 档是参数档，只改 `params.yaml`、准备素材、写 SKILL.md，`run.py` 沿用脚手架的默认实现；B 档是滤镜档，需要写 `filter_complex`，改动 `run.py`。刚上手的人先做 A 档。
 
-## 新人五步
+## 分支与提交
 
-不会 git 命令行的同学不要从这一节开始，先看 `docs/ONBOARDING.md`：那里给了一条纯网页端的分支与 PR 路径，不需要装 Git，也不需要会 `pull` / `push`。下面的五步默认你已经在本地能跑通命令。
+`main` 只接受 PR，任何人不在 `main` 上直接提交。负责人应在仓库 Settings → Branches 给 `main` 开启保护：Require a pull request before merging，并勾选 Require approvals 1。
+
+分支命名带类型前缀和一个短描述，例如 `feat/fire-transition`、`fix/manga-split-cell`、`docs/readme-demo`。提交信息用 `type(scope): 说明`，type 取 `feat` / `fix` / `docs` / `refactor` / `chore`，scope 写特效名或模块名，说明用中文，一句话讲清改了什么。
+
+一次完整提交的动作序列是这样，逐条执行，不要跳步：
+
+```
+git switch main
+git pull
+git switch -c feat/your-effect
+git status
+git diff
+git add effects/your-effect
+git commit -m "feat(your-effect): 一句话说明改了什么"
+git push -u origin feat/your-effect
+```
+
+推送完成后到仓库页面点 Compare & pull request 开 PR，描述按 `.github/PULL_REQUEST_TEMPLATE.md` 填。合并之后回到本地收尾：
+
+```
+git switch main
+git pull
+git branch -d feat/your-effect
+```
+
+`git pull` 报冲突时不要硬合：先 `git rebase --abort` 退回干净状态，再找负责人。冲突处理不是新人的必修项，卡住就停手。
+
+## 新人五步
 
 - 领取 `.github/ISSUE_TEMPLATE/new-effect.md` 任务卡，确认档位、触发词、素材许可与验收指标。
 - 执行 `python aicut.py new-effect <name>` 生成三件套，把占位内容换成实际内容。

@@ -113,7 +113,7 @@ python aicut.py catalog                        # 触发词自动进路由表
 - `adapters/` MCP 薄适配的预留位，默认不引入任何运行时依赖。
 - `tests/smoke.py` 零依赖基线（路由无冲突、原话命中正确、全部 effect 自检、`selection.effects` 真限制轮替、参数覆盖优先级、源码可编译）。
 - `docs/` 样片与协作说明，`examples/` 合成素材生成脚本。
-- `.github/` 任务卡、PR 检查表与 CODEOWNERS，`CONTRIBUTING.md` 分工边界与新人流程，`docs/ONBOARDING.md` 给不会 git 命令行的同学。
+- `.github/` 任务卡、PR 检查表与 CODEOWNERS，`CONTRIBUTING.md` 分工边界、分支命名与提交规范。
 
 ## 设计约束
 
@@ -139,7 +139,7 @@ build(shot, params, caps) -> (extra_inputs, filter_chain_lines)
 
 ## 参与
 
-不需要会写代码也能参与：收集特效参考、拆解参数、跑验证、写踩坑记录都是有效分工。零 git 基础的同学从 `docs/ONBOARDING.md` 开始；会命令行的看 `CONTRIBUTING.md`。
+不需要会写代码也能参与：收集特效参考、拆解参数、跑验证、写踩坑记录都是有效分工。新人由负责人带着走一遍「clone → 分支 → 提交 → PR」，命令序列与分支规范见 `CONTRIBUTING.md`。
 
 ## 许可
 
