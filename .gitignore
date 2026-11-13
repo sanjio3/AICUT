@@ -1,0 +1,29 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# 出片快照、逐镜缓存与能力探测结果只保留说明文件，真实产物留在本机
+runs/*
+!runs/README.md
+
+# 本机素材、字体、BGM、二进制与本机覆盖配置一律不入库
+materials/
+local.yaml
+.env
+*.mp4
+*.mov
+*.mkv
+*.webm
+
+# 唯一的例外：文档里的预览样片，压过体积、可随仓库分发
+!docs/demo/*.mp4
+
+# 渲染中间产物。文档示意图允许入库，所以不再全局忽略 png/jpg
+shots/
+*.log
+.DS_Store

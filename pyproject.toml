@@ -1,0 +1,28 @@
+# AICUT is distributed as a Skill directory: the repository root IS the skill root.
+# It is NOT published to PyPI. Install dependencies with `pip install -r requirements.txt`.
+# This file exists for project metadata, dependency scanners and tooling only.
+[project]
+name = "aicut"
+version = "0.2.0"
+description = "Agent plugin for beat-synced, effects-driven video editing"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "AICUT contributors" }]
+keywords = ["video", "editing", "beat-sync", "ffmpeg", "agent-skill", "mcp"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Multimedia :: Video",
+]
+dependencies = [
+    "numpy>=1.24",
+    "opencv-python>=4.8",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

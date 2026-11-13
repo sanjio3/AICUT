@@ -1,0 +1,6 @@
+# AICUT runtime dependencies.
+# ffmpeg is an external executable supplied by the host, not a Python package.
+# Python 3.9+ is required. On Windows PyYAML installs as the `yaml` module.
+numpy>=1.24
+opencv-python>=4.8
+PyYAML>=6.0

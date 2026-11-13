@@ -1,0 +1,20 @@
+# 把 @REPLACE_WITH_LEAD 换成负责人实际的 GitHub 用户名后本文件才生效。
+# 默认所有路径需要负责人 review，避免同学误改共享内核。
+*                       @REPLACE_WITH_LEAD
+
+# 内核、根契约与测试基线只由负责人维护。
+/lib/                   @REPLACE_WITH_LEAD
+/SKILL.md               @REPLACE_WITH_LEAD
+/params.yaml            @REPLACE_WITH_LEAD
+/aicut.py               @REPLACE_WITH_LEAD
+/tests/                 @REPLACE_WITH_LEAD
+/examples/              @REPLACE_WITH_LEAD
+/.github/               @REPLACE_WITH_LEAD
+/NOTICE                 @REPLACE_WITH_LEAD
+/pyproject.toml         @REPLACE_WITH_LEAD
+/requirements.txt       @REPLACE_WITH_LEAD
+
+# 每个特效分给同学时，由负责人在这里加一行，例如：
+# /effects/sparkle-cut/   @some-classmate
+# 未显式列出的 effect 仍走最上面的默认规则。
+/effects/_template/     @REPLACE_WITH_LEAD

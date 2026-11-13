@@ -1,0 +1,30 @@
+# manga-split 局部默认值。0.1.0 是规则四格，v30 的不规则斜切蒙版尚未迁移。
+cells:
+  default: 4
+  locked: true
+  note: "当前实现固定四格；不规则分格需要预生成蒙版序列，属下一阶段"
+mono_sat:
+  default: 0.05
+  min: 0
+  max: 1
+  step: 0.05
+  affects: [V, laplacian_var]
+  note: "黑白格的饱和度，越低越接近漫画"
+color_sat:
+  default: 1.40
+  min: 0.5
+  max: 2.5
+  step: 0.05
+  affects: [V]
+  note: "彩色格的饱和度，两格一彩一黑白形成对比"
+contrast:
+  default: 1.25
+  min: 0.9
+  max: 2.0
+  step: 0.02
+  affects: [V, dark_pct]
+  note: "分格统一对比度"
+beat_align:
+  default: true
+  affects: [cut_rate]
+  note: "由 lib/plan.py 消费"

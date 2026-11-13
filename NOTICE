@@ -1,0 +1,33 @@
+AICUT — third-party notices
+
+The MIT license in LICENSE covers the source code in this repository only. It does
+not cover any of the media, binaries or external projects listed below.
+
+ffmpeg
+  AICUT invokes ffmpeg as an external executable supplied by the host. No ffmpeg
+  binary is distributed here. ffmpeg licensing (LGPL/GPL, depending on the build
+  configuration) is the responsibility of whoever supplies that binary.
+
+Source media
+  Video clips, background music, fonts and overlay effects are NOT distributed
+  with this repository. Users point AICUT at their own files via environment
+  variables in params.yaml. You must hold the rights to whatever media you use;
+  a generated video inherits the licensing status of its inputs. .gitignore
+  excludes materials/, local.yaml, .env and all video/audio artifacts for this
+  reason.
+
+lib/beat.py
+  This module is derived from an internal script (music_structure.py) belonging
+  to the author's ai-edit-kit workspace. Before publishing this repository,
+  confirm that you have the right to relicense that code under MIT; if not,
+  replace it with an independently written beat detector or add the original
+  copyright line here.
+
+Reference material
+  The Skill layout and the "one effect, one SKILL.md" pattern were informed by
+  the open-source video-shotcraft project. No code from that project is copied
+  into AICUT; its own license applies to that project separately.
+
+Python dependencies
+  numpy (BSD-3-Clause), opencv-python (Apache-2.0 / MIT components),
+  PyYAML (MIT). Their licenses ship with the installed packages.
