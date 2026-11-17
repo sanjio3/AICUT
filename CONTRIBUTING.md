@@ -12,9 +12,9 @@ AICUT 以 Skill 目录形式分发，仓库根就是 Skill 根。贡献之前先
 
 ## 分工边界
 
-负责人维护 `lib/`、`aicut.py`、根 `SKILL.md`、`params.yaml`、`tests/`、`examples/`、`.github/`、`NOTICE` 与 `pyproject.toml`。同学只在自己认领的 `effects/<name>/` 目录里工作。根 `SKILL.md` 不再有手写路由表，触发词写在各自 frontmatter 的 `triggers` 字段，由 `lib/catalog.py` 自动汇总，因此多人并行不会在同一张共享文件上冲突。`.github/CODEOWNERS` 把这条边界固化成 review 规则。
+负责人维护 `lib/`、`aicut.py`、`install.py`、根 `SKILL.md`、`params.yaml`、`tests/`、`examples/`、`.github/`、`NOTICE` 与 `pyproject.toml`。同学只在自己认领的 `skills/<name>/` 目录里工作。路由由宿主读每个 skill 的 `description` 完成，`triggers` 只是可选加速索引，因此多人并行不会在同一张共享文件上冲突。`.github/CODEOWNERS` 把这条边界固化成 review 规则。
 
-特效任务分两档，由负责人在 issue 里判定，同学不要自己挑。A 档是参数档，只改 `params.yaml`、准备素材、写 SKILL.md，`run.py` 沿用脚手架的默认实现；B 档是滤镜档，需要写 `filter_complex`，改动 `run.py`。刚上手的人先做 A 档。
+特效任务分两档，由负责人在 issue 里判定，同学不要自己挑。A 档是参数档，只改 `references/params.yaml`、准备素材、写 `SKILL.md` 与 `references/pitfalls.md`，`scripts/build.py` 沿用脚手架默认实现；B 档是滤镜档，需要写 `filter_complex`，改动 `scripts/build.py`。刚上手的人先做 A 档。
 
 ## 分支与提交
 
@@ -30,7 +30,7 @@ git pull
 git switch -c feat/your-effect
 git status
 git diff
-git add effects/your-effect
+git add skills/your-effect
 git commit -m "feat(your-effect): 一句话说明改了什么"
 git push -u origin feat/your-effect
 ```
@@ -53,7 +53,7 @@ git branch -d feat/your-effect
 - 执行 `python aicut.py validate-effect <name>`，再执行 `python aicut.py catalog` 确认能被检索且无 CONFLICTS，最后跑 `python tests/smoke.py`。
 - 跑一次 `plan / render / qa`，把实测指标写回 SKILL.md 的「验收」段，附一张效果抽帧图后提 PR。
 
-`run.py` 必须导出纯函数 `build(shot, params, caps) -> (extra_inputs, filter_chain_lines)`，不落盘、不启进程、不读全局配置；基础链输出标签是 `[g]`，额外输入编号从 1 开始，最后一行必须输出 `[out]`。路径与画布尺寸由渲染层注入 `params["_overlays"]`、`params["_assets"]`、`params["_geom"]`，不要自己拼绝对路径。`validate-effect` 会用假 shot 真调一次 `build()`，签名、返回值和 `[out]` 标签写错都能当场发现。
+`scripts/build.py` 必须导出纯函数 `build(shot, params, caps) -> (extra_inputs, filter_chain_lines)`，不落盘、不启进程、不读全局配置；基础链输出标签是 `[g]`，额外输入编号从 1 开始，最后一行必须输出 `[out]`。路径与画布尺寸由渲染层注入 `params["_overlays"]`、`params["_assets"]`、`params["_geom"]`，不要自己拼绝对路径。`validate-effect` 会用假 shot 真调一次 `build()`，签名、返回值和 `[out]` 标签写错都能当场发现。
 
 `params.yaml` 里每个可调键都要写 `default`；有 `min/max` 就必须有 `step`，`affects` 指向 `qa.py` 真实输出的指标名，`note` 里写清副作用，因为「改 A 会恶化 B」的耦合比参数本身更值钱。锁定的键用 `locked: true`。
 
@@ -67,7 +67,7 @@ git branch -d feat/your-effect
 - 用 `python tests/smoke.py` 跑零依赖基线，再用 `python aicut.py validate-effect --all` 确认全部特效契约完好。
 - 用 `python -m compileall -q .` 确认无语法错误。
 - 确认新增代码里没有本机绝对路径、用户名或私有目录名。
-- 改了 effect 的 `run.py` 后不必手动清缓存，`shot_key` 已把 `run.py` 内容哈希纳入缓存键。
+- 改了 skill 的 `scripts/build.py` 后不必手动清缓存，`shot_key` 已把该文件内容哈希纳入缓存键。
 - 若引入了新的第三方依赖，同步更新 `requirements.txt`、`pyproject.toml` 与 `NOTICE`。
 
 ## 关于 1:1 复现

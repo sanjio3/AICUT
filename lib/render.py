@@ -13,7 +13,7 @@ from .ff import encode, run
 
 
 def load_effect(name):
-    path = os.path.abspath(os.path.join("effects", name, "run.py"))
+    path = os.path.abspath(os.path.join("skills", name, "scripts", "build.py"))
     if not os.path.exists(path):
         raise RuntimeError("effect not found: %s" % name)
     spec = importlib.util.spec_from_file_location("aicut_effect_%s" % name, path)
@@ -23,10 +23,10 @@ def load_effect(name):
 
 
 def effect_code_hash(name):
-    """effect 的 run.py 改了，缓存必须失效，否则改代码看不到新画面。"""
+    """effect 的 build.py 改了，缓存必须失效，否则改代码看不到新画面。"""
     if name == "base":
         return "base"
-    p = os.path.abspath(os.path.join("effects", name, "run.py"))
+    p = os.path.abspath(os.path.join("skills", name, "scripts", "build.py"))
     if not os.path.exists(p):
         return "missing"
     with open(p, "rb") as fh:

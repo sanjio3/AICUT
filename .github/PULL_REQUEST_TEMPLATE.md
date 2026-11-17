@@ -6,12 +6,14 @@
 
 - [ ] `python aicut.py validate-effect <name>` 全部 PASS
 - [ ] `python aicut.py catalog` 无 CONFLICTS，新特效可被检索到
+- [ ] `python aicut.py install --dry-run` 能看到它
 - [ ] `python tests/smoke.py` 通过
 - [ ] `python -m compileall -q .` 无语法错误
-- [ ] 只改了 `effects/<name>/`；若改了 `lib/`、`SKILL.md` 或 `params.yaml`，在下面说明原因并 @负责人
+- [ ] 只改了 `skills/<name>/`；若改了 `lib/`、`SKILL.md` 或 `params.yaml`，在下面说明原因并 @负责人
 - [ ] SKILL.md 四段（渲染前回传参数表 / 验收 / 已知坑 / 当前实现边界）齐全，实测指标已填进「验收」
-- [ ] `params.yaml` 每个键都有 `default`，有 `min/max` 就有 `step`，`note` 写了副作用
-- [ ] 触发词写在自己 SKILL.md frontmatter 的 `triggers`，没有去改根 SKILL.md 的路由表
+- [ ] `references/params.yaml` 每个键都有 `default`，有 `min/max` 就有 `step`，`note` 写了副作用
+- [ ] `references/pitfalls.md` 已填，没留 TODO
+- [ ] SKILL.md frontmatter 有 `name` / `description` / `version` / `agent_created: true`
 - [ ] 没有提交素材、成片、`.env`、`__pycache__` 或 `runs/` 下的产物
 - [ ] 若引入新依赖或第三方代码，同步更新了 `requirements.txt`、`pyproject.toml`、`NOTICE`
 

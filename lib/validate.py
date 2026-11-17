@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-"""effect 自检：不跑全片，用静态检查加一次纯函数调用验证三件套契约。
+"""skill 自检：不跑全片，用静态检查加一次纯函数调用验证标准 skill 契约。
 
+标准 skill 目录形态：SKILL.md + scripts/build.py + references/params.yaml。
 基础弱的贡献者写完一个特效后，用 `python aicut.py validate-effect <name>`
 就能知道有没有漏文件、漏字段、写错签名或忘了输出 [out] 标签。
 """
@@ -14,17 +15,18 @@ import yaml
 
 from . import catalog
 
-REQUIRED_FILES = ("SKILL.md", "run.py", "params.yaml")
-REQUIRED_META = ("name", "description", "version", "triggers")
+REQUIRED_FILES = ("SKILL.md", "scripts/build.py", "references/params.yaml")
+REQUIRED_META = ("name", "description", "version", "agent_created")
 REQUIRED_SECTIONS = ("渲染前必须回传的参数表", "验收", "已知坑", "当前实现边界")
 BANNED_CALLS = ("subprocess", "os.system", "cv2.imwrite", "shutil.copy")
+BUILD = os.path.join("scripts", "build.py")
 
 
 def _front(path):
     return catalog.parse_front(path)
 
 
-def check(name, root="effects"):
+def check(name, root="skills"):
     errors, warnings = [], []
     d = os.path.join(root, name)
     if not os.path.isdir(d):
@@ -53,7 +55,8 @@ def check(name, root="effects"):
     if "TODO" in sk:
         warnings.append("SKILL.md still contains TODO placeholders")
 
-    with io.open(os.path.join(d, "params.yaml"), "r", encoding="utf-8") as fh:
+    with io.open(os.path.join(d, "references", "params.yaml"), "r",
+                 encoding="utf-8") as fh:
         pdoc = yaml.safe_load(fh) or {}
     if not isinstance(pdoc, dict) or not pdoc:
         errors.append("params.yaml must be a non-empty mapping")
@@ -69,23 +72,23 @@ def check(name, root="effects"):
         if "note" not in spec:
             warnings.append("param '%s' has no note about side effects" % key)
 
-    src = io.open(os.path.join(d, "run.py"), "r", encoding="utf-8").read()
+    src = io.open(os.path.join(d, BUILD), "r", encoding="utf-8").read()
     for bad in BANNED_CALLS:
         if bad in src:
-            warnings.append("run.py references '%s': build() should stay pure" % bad)
+            warnings.append("scripts/build.py references '%s': build() should stay pure" % bad)
 
     spec = importlib.util.spec_from_file_location(
         "aicut_validate_%s" % re.sub(r"\W", "_", name),
-        os.path.join(d, "run.py"))
+        os.path.join(d, BUILD))
     mod = importlib.util.module_from_spec(spec)
     try:
         spec.loader.exec_module(mod)
     except Exception as exc:                                    # noqa: BLE001
-        errors.append("run.py import failed: %s" % exc)
+        errors.append("scripts/build.py import failed: %s" % exc)
         return {"name": name, "ok": False, "errors": errors, "warnings": warnings}
     fn = getattr(mod, "build", None)
     if fn is None:
-        errors.append("run.py must export build(shot, params, caps)")
+        errors.append("scripts/build.py must export build(shot, params, caps)")
     else:
         try:
             args = list(inspect.signature(fn).parameters)
@@ -117,14 +120,14 @@ def check(name, root="effects"):
         if name in (a, b):
             errors.append("trigger '%s' conflicts with %s" %
                           (key, b if a == name else a))
-    if not (meta.get("triggers") if meta else None):
-        errors.append("no triggers declared")
+    if meta and not meta.get("triggers"):
+        warnings.append("no triggers declared; host will fall back to description")
 
     return {"name": name, "ok": not errors, "errors": errors,
             "warnings": warnings}
 
 
-def check_all(root="effects"):
+def check_all(root="skills"):
     out = []
     if not os.path.isdir(root):
         return out

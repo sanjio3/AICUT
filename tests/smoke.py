@@ -70,7 +70,8 @@ def main():
                 "override=%s" % scalars["fire-transition"]["flame_gain"])
 
     def c_compile():
-        files = [os.path.join(ROOT, "aicut.py")]
+        files = [os.path.join(ROOT, "aicut.py"),
+                 os.path.join(ROOT, "install.py")]
         lib = os.path.join(ROOT, "lib")
         files += [os.path.join(lib, f) for f in sorted(os.listdir(lib))
                   if f.endswith(".py")]
@@ -78,9 +79,33 @@ def main():
             py_compile.compile(f, doraise=True)
         return True, "%d python files" % len(files)
 
-    check("catalog scans effects without trigger conflicts", c_catalog)
+    def c_structure():
+        items = catalog.scan()
+        bad = []
+        for name, meta in items.items():
+            if not meta.get("agent_created"):
+                bad.append("%s:no agent_created" % name)
+            if not meta.get("has_scripts"):
+                bad.append("%s:no scripts/" % name)
+            if not meta.get("has_references"):
+                bad.append("%s:no references/" % name)
+            if not os.path.exists(os.path.join("skills", name,
+                                               "references", "params.yaml")):
+                bad.append("%s:no references/params.yaml" % name)
+        return (not bad and len(items) >= 3, ", ".join(bad) or "%d standard skills" % len(items))
+
+    def c_install():
+        from lib import install as im
+        skills = im._skills()
+        names = [s[2] for s in skills]
+        ok = len(skills) >= 3 and all(n.startswith("aicut-") for n in names)
+        return ok, ", ".join(names)
+
+    check("catalog scans skills without trigger conflicts", c_catalog)
     check("user phrase maps to the right effects", c_lookup)
-    check("all built-in effects pass validate-effect", c_validate)
+    check("all built-in skills pass validate-effect", c_validate)
+    check("each skill follows the standard layout", c_structure)
+    check("installer discovers named skills", c_install)
     check("selection.effects really restricts the rotation", c_selection)
     check("parameter override wins over local defaults", c_merge)
     check("python sources compile", c_compile)

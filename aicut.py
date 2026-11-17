@@ -17,6 +17,7 @@ if ROOT not in sys.path:
 
 from lib import (assets, catalog, doctor, ff, music, plan as planmod,  # noqa: E402
                  pool as poolmod, qa, render, validate)
+from lib import install as installmod  # noqa: E402
 
 
 def config():
@@ -90,21 +91,30 @@ def cmd_new_effect(args):
     name = args.name.strip()
     if not re.match(r"^[a-z0-9][a-z0-9-]*$", name):
         raise SystemExit("effect name must be lowercase letters, digits or hyphens")
-    src = os.path.join(ROOT, "effects", "_template")
-    dst = os.path.join(ROOT, "effects", name)
+    src = os.path.join(ROOT, "skills", "_template")
+    dst = os.path.join(ROOT, "skills", name)
     if os.path.exists(dst):
-        raise SystemExit("effect already exists: effects/%s" % name)
+        raise SystemExit("effect already exists: skills/%s" % name)
     shutil.copytree(src, dst)
-    for fn in ("SKILL.md", "run.py", "params.yaml"):
+    for fn in ("SKILL.md",
+               os.path.join("scripts", "build.py"),
+               os.path.join("references", "params.yaml"),
+               os.path.join("references", "pitfalls.md")):
         p = os.path.join(dst, fn)
         with io.open(p, "r", encoding="utf-8") as fh:
             text = fh.read()
         with io.open(p, "w", encoding="utf-8") as fh:
             fh.write(text.replace("<NAME>", name))
-    print("created: effects/%s/ (SKILL.md, run.py, params.yaml)" % name)
-    print("1. fill in triggers, the four required sections and params.yaml")
-    print("2. python aicut.py validate-effect %s" % name)
-    print("3. python aicut.py catalog  (confirm it is discoverable)")
+    print("created: skills/%s/" % name)
+    print("  SKILL.md                    frontmatter + 何时使用 + 四段必写章节")
+    print("  scripts/build.py            build() 纯函数")
+    print("  references/params.yaml      可调旋钮")
+    print("  references/pitfalls.md      参数表 / 验收阈值 / 已知坑 / 实现边界")
+    print("next:")
+    print("  1. fill in SKILL.md triggers and the four sections")
+    print("  2. python aicut.py validate-effect %s" % name)
+    print("  3. python aicut.py catalog  (confirm it is discoverable)")
+    print("  4. python aicut.py install --dry-run  (see where it would go)")
 
 
 def cmd_validate(args):
@@ -265,6 +275,20 @@ def cmd_diff(args):
     print("gate     : %s -> %s" % (r["gate_a"], r["gate_b"]))
 
 
+def cmd_install(args):
+    if args.project:
+        target = os.path.join(os.path.abspath(args.project), ".workbuddy", "skills")
+    elif args.target:
+        target = os.path.abspath(args.target)
+    else:
+        target = os.path.expanduser(os.path.join("~", ".workbuddy", "skills"))
+    only = [x.strip() for x in args.only.split(",")] if args.only else None
+    rc = installmod.install(target, force=args.force, dry_run=args.dry_run,
+                            only=only)
+    if rc:
+        raise SystemExit(rc)
+
+
 def main():
     ap = argparse.ArgumentParser(prog="aicut")
     sub = ap.add_subparsers(dest="action")
@@ -306,13 +330,23 @@ def main():
     p.add_argument("--a", required=True)
     p.add_argument("--b", required=True)
 
+    p = sub.add_parser("install")
+    p.add_argument("--target", default=None,
+                   help="target skills directory (default ~/.workbuddy/skills)")
+    p.add_argument("--project", default=None,
+                   help="install into <dir>/.workbuddy/skills")
+    p.add_argument("--only", default=None, help="comma-separated effect names")
+    p.add_argument("--force", action="store_true")
+    p.add_argument("--dry-run", action="store_true")
+
     args = ap.parse_args()
     handlers = {"doctor": cmd_doctor, "prepare": cmd_prepare,
                 "catalog": cmd_catalog, "new-effect": cmd_new_effect,
                 "validate-effect": cmd_validate,
                 "params": cmd_params,
                 "attribute": cmd_attribute, "plan": cmd_plan,
-                "render": cmd_render, "qa": cmd_qa, "diff": cmd_diff}
+                "render": cmd_render, "qa": cmd_qa, "diff": cmd_diff,
+                "install": cmd_install}
     if not args.action:
         ap.print_help()
         return

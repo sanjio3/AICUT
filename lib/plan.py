@@ -36,10 +36,10 @@ def _meta(node, prefix=""):
 
 
 def _local(cfg, effect_id):
-    """effect 局部 params.yaml，缺失时返回空。"""
+    """skill 局部参数，缺失时返回空。标准 skill 把参数放在 references/params.yaml。"""
     if not effect_id or effect_id == "base":
         return {}
-    path = os.path.join("effects", effect_id, "params.yaml")
+    path = os.path.join("skills", effect_id, "references", "params.yaml")
     if not os.path.exists(path):
         return {}
     with io.open(path, "r", encoding="utf-8") as fh:
@@ -54,8 +54,8 @@ def merged(cfg, effect_id=None, overrides=None, all_effects=False):
         local = _local(cfg, effect_id)
         scalars.setdefault(effect_id, {}).update(
             {k: _val(v) for k, v in local.items()})
-    if all_effects and os.path.isdir("effects"):
-        for name in sorted(os.listdir("effects")):
+    if all_effects and os.path.isdir("skills"):
+        for name in sorted(os.listdir("skills")):
             if name.startswith(("_", ".")) or name == effect_id:
                 continue
             scalars.setdefault(name, {}).update(
@@ -123,7 +123,7 @@ def build(cfg, grid, pool, overrides=None, duration=None, effects=None):
         sel = [x.strip() for x in sel.split(",") if x.strip()]
     seq = list(sel) if sel else list(SEQ)
     for name in seq:
-        if name != "base" and not os.path.isdir(os.path.join("effects", name)):
+        if name != "base" and not os.path.isdir(os.path.join("skills", name)):
             raise RuntimeError("unknown effect: %s" % name)
     rotating = [e for e in seq if e != "ending-dissolve"] or ["base"]
     has_ending = "ending-dissolve" in seq

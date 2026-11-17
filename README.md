@@ -43,9 +43,9 @@ python aicut.py qa      --run r1
 
 **素材自预处理。** 不需要人工挑素材、剪片段或标黑场。`prepare` 扫描素材目录，按 7 点采样算出每段素材的时长、帧率、平均亮度，再整段扫出黑场区间；文件名含「火焰 / fire / burn」的自动归到叠加素材池。产物落在 `runs/_cache/assets.json`，`Pool` 与各 effect 直接复用，不重复开文件。
 
-**参数可归因。** 每个 effect 的 `params.yaml` 给每个旋钮写上 `default / min / max / step / affects / note`，`params` 打印时区分三态：带范围的滑杆、枚举、锁死值。你说的「火焰太暗」由 `attribution` 表映射到 `fire-transition.flame_gain`，而不是让 Agent 猜。
+**参数可归因。** 每个 skill 的 `references/params.yaml` 给每个旋钮写上 `default / min / max / step / affects / note`，`params` 打印时区分三态：带范围的滑杆、枚举、锁死值。你说的「火焰太暗」由 `attribution` 表映射到 `fire-transition.flame_gain`，而不是让 Agent 猜。
 
-**增量渲染。** 逐镜独立出片后再 concat，失败可补渲。逐镜缓存按内容哈希命名放在 `runs/_cache/shots/`，键里含素材段、速度、effect 名与参数、ffmpeg 能力哈希、effect 代码哈希——改一个旋钮只重渲相关的镜头，改 `run.py` 会自动让对应缓存失效。
+**增量渲染。** 逐镜独立出片后再 concat，失败可补渲。逐镜缓存按内容哈希命名放在 `runs/_cache/shots/`，键里含素材段、速度、effect 名与参数、ffmpeg 能力哈希、skill 代码哈希——改一个旋钮只重渲相关的镜头，改 `scripts/build.py` 会自动让对应缓存失效。
 
 **验收指标。** 320×180 逐帧统计亮度均值、暗帧占比、过曝占比、重复帧、切点率、运动分位数、Laplacian 方差与 repeat_ratio，`gate` 按 `params.yaml` 的阈值给 PASS / WARN。WARN 只报警不回退：是不是真的坏了由人看图定，不由脚本替你决定。
 
@@ -98,42 +98,45 @@ python aicut.py diff   --a <run_id_1> --b <run_id_2>
 ```
 python aicut.py new-effect my-effect
 python aicut.py validate-effect my-effect      # 不跑全片，静态检查 + 用假 shot 真调一次 build()
-python aicut.py catalog                        # 触发词自动进路由表
+python aicut.py catalog                        # 确认能被发现
+python aicut.py install --dry-run              # 看会装到哪，不写入
+python aicut.py install                        # 装到 ~/.workbuddy/skills/
 ```
 
-触发词由每个 effect 自己 `SKILL.md` frontmatter 的 `triggers` 声明，`lib/catalog.py` 汇总并检查冲突。加特效既不用改 `lib/`，也不用改根 `SKILL.md`——这样多人同时开发不会在同一个文件上打架。
+每个特效是一个**标准 Skill**：`skills/<name>/` 下有 `SKILL.md`（原生 frontmatter + 何时使用 + 四段必写章节）、`scripts/build.py`（纯函数）、`references/params.yaml`（旋钮）与 `references/pitfalls.md`（参数表 / 验收 / 坑 / 边界）。路由由宿主读 `description` 完成，`triggers` 只是可选加速索引。加特效不用改 `lib/`，也不用改根 `SKILL.md`——多人同时开发不会在同一个文件上打架。
 
 ## 目录
 
-- `SKILL.md` Agent 的唯一必读入口，六步工作流与全局踩坑都在这。
+- `SKILL.md` Agent 的编排入口，六步工作流与全局踩坑都在这。
 - `params.yaml` 用户唯一需要改的文件：路径、全局旋钮、归因表、gate 阈值。
-- `effects/<name>/` 一个特效一个目录，三件套 `SKILL.md` + `run.py` + `params.yaml`。
+- `skills/<name>/` 一个特效一个标准 skill：`SKILL.md` + `scripts/build.py` + `references/params.yaml` + `references/pitfalls.md`。
+- `install.py` 把 `skills/` 装到宿主扫描路径（`~/.workbuddy/skills/` 或项目级）。
 - `lib/` 无状态执行内核，不面向用户。`beat.py` 自动卡点，`assets.py` 自预处理，`render.py` 缓存与拼接，`qa.py` 指标。
 - `runs/<id>/` 每次出片的快照，append-only，供 diff 回放；`runs/_cache/shots/` 是跨 run 共享的片段缓存。
 - `adapters/` MCP 薄适配的预留位，默认不引入任何运行时依赖。
-- `tests/smoke.py` 零依赖基线（路由无冲突、原话命中正确、全部 effect 自检、`selection.effects` 真限制轮替、参数覆盖优先级、源码可编译）。
+- `tests/smoke.py` 零依赖基线（skill 可发现且无冲突、原话命中正确、全部 skill 自检、标准布局齐全、安装器能发现 skill、`selection.effects` 真限制轮替、参数覆盖优先级、源码可编译）。
 - `docs/` 样片与协作说明，`examples/` 合成素材生成脚本。
 - `.github/` 任务卡、PR 检查表与 CODEOWNERS，`CONTRIBUTING.md` 分工边界、分支命名与提交规范。
 
 ## 设计约束
 
-全程用浮点秒记录时间，换算成帧只发生在渲染最后一步。每个 `run.py` 是不落盘、不启进程的纯函数：
+全程用浮点秒记录时间，换算成帧只发生在渲染最后一步。每个 `scripts/build.py` 是不落盘、不启进程的纯函数：
 
 ```
 build(shot, params, caps) -> (extra_inputs, filter_chain_lines)
 ```
 
-基础链输入固定叫 `[g]`，额外输入从 1 开始编号，最后一行必须输出 `[out]`。路径一律由 `params["_overlays"]` / `["_assets"]` / `["_geom"]` 注入，effect 不读全局配置、不自己找文件。这条契约让 effect 可以被单测、被替换、被同学独立开发。
+基础链输入固定叫 `[g]`，额外输入从 1 开始编号，最后一行必须输出 `[out]`。路径一律由 `params["_overlays"]` / `["_assets"]` / `["_geom"]` 注入，skill 不读全局配置、不自己找文件。这条契约让每个特效可以被单测、被替换、被同学独立开发。
 
 ## 复现边界
 
-`plan.json` + `effective.yaml` + 固定素材池种子 + ffmpeg 能力哈希 + effect 代码哈希，保证**本机**逐镜可复现：同一台机器、同一批素材、同一组参数，重跑出的是同一批镜头。
+`plan.json` + `effective.yaml` + 固定素材池种子 + ffmpeg 能力哈希 + skill 代码哈希，保证**本机**逐镜可复现：同一台机器、同一批素材、同一组参数，重跑出的是同一批镜头。
 
 跨机器只能复现节奏与参数，不能复现像素——素材、BGM、字体与 ffmpeg 二进制都不随仓库分发，既是为了不污染许可，也是因为它们本来就该由使用者自己准备。仓库不打包这些内容，`LICENSE` 只覆盖本仓库代码，第三方许可说明见 `NOTICE`。
 
 ## 当前状态
 
-0.2.0 已贯通三条能力：用户点名哪几个特效就只轮替哪几个（`selection.effects` 是唯一开关）；`prepare` 自动识别 BGM 卡点与素材黑场，不依赖任何人工预处理；每个 effect 自带 `SKILL.md` / `run.py` / `params.yaml`，可通过 `catalog` 路由、`validate-effect` 自检、`new-effect` 生成。
+0.3.0 把特效从「仿 SKILL.md 的自研目录」改成了**标准 Skill**：每个特效在 `skills/<name>/` 下有原生 frontmatter（`name` / `description` / `agent_created`）的 `SKILL.md`、`scripts/build.py` 与 `references/`（`params.yaml` + `pitfalls.md`），由宿主读 `description` 自动加载，`install.py` 负责装到扫描路径。叠加 0.2.0 已有的三条能力：用户点名哪几个特效就只轮替哪几个（`selection.effects` 是唯一开关）；`prepare` 自动识别 BGM 卡点与素材黑场；`validate-effect` 与 `catalog` 做提交前自检。
 
 完整 48 秒链路实测：138 镜、104 拍点、48.04 秒，暗帧 5.3%、重复帧 1.6%、切点 4.31/s。样片级的视觉内核尚未迁移，差的部分是文字烘焙、不规则斜切蒙版、拟声字排版、96 帧交叉溶解序列与定格电光——这些目前还留在 v30 的渲染脚本里，1:1 复现是下一阶段的硬验收线。
 

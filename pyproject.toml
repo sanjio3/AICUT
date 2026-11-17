@@ -3,7 +3,7 @@
 # This file exists for project metadata, dependency scanners and tooling only.
 [project]
 name = "aicut"
-version = "0.2.0"
+version = "0.3.0"
 description = "Agent plugin for beat-synced, effects-driven video editing"
 readme = "README.md"
 requires-python = ">=3.9"

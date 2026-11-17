@@ -1,6 +1,6 @@
 ---
 name: 新增 / 认领一个特效
-about: 收集并封装一个新的剪辑特效，交付 effects/<name>/ 三件套
+about: 收集并封装一个新的剪辑特效，交付 skills/<name>/ 标准 skill
 title: "[effect] <特效名>"
 labels: effect
 assignees: ''
@@ -10,8 +10,8 @@ assignees: ''
 
 先由负责人判定档位，不要自己挑。
 
-- **A 档（参数档）**：只改 `params.yaml`、准备素材、写 SKILL.md，`run.py` 用模板里的默认实现。适合刚上手的同学。
-- **B 档（滤镜档）**：需要写 `filter_complex`，改 `run.py`。由负责人确认后再开工。
+- **A 档（参数档）**：只改 `references/params.yaml`、准备素材、写 `SKILL.md` 与 `references/pitfalls.md`，`scripts/build.py` 用模板里的默认实现。适合刚上手的同学。
+- **B 档（滤镜档）**：需要写 `filter_complex`，改 `scripts/build.py`。由负责人确认后再开工。
 
 ## 基本信息
 
@@ -28,7 +28,7 @@ assignees: ''
 
 ## 参数草案
 
-先用 `python aicut.py new-effect <name>` 生成三件套，再填下面这几项。
+先用 `python aicut.py new-effect <name>` 生成标准 skill 骨架，再填下面这几项。
 
 - 打算暴露几个旋钮（建议 3–7 个，其余进 preset）：
 - 每个旋钮的默认值、范围、影响的 `qa.json` 指标名：
@@ -38,6 +38,7 @@ assignees: ''
 
 - [ ] `python aicut.py validate-effect <name>` 全部 PASS
 - [ ] `python aicut.py catalog` 能看到新特效且无 CONFLICTS
+- [ ] `python aicut.py install --dry-run` 能看到它，`install` 后宿主可扫描到
 - [ ] `python tests/smoke.py` 通过
 - [ ] 跑过一次 `plan / render / qa`，把实测指标写进 SKILL.md 的「验收」段
 - [ ] SKILL.md 的「已知坑」与「当前实现边界」如实填写，没有把简化实现说成完整实现
@@ -45,6 +46,6 @@ assignees: ''
 
 ## 边界
 
-只改 `effects/<name>/` 里的文件。不要改 `lib/`、`SKILL.md`、`params.yaml`、`pyproject.toml` 或别人的 effect 目录；确实需要改内核时，另开一个 issue 交负责人处理。
+只改 `skills/<name>/` 里的文件。不要改 `lib/`、`SKILL.md`、`params.yaml`、`pyproject.toml` 或别人的 skill 目录；确实需要改内核时，另开一个 issue 交负责人处理。
 
 认领人：
