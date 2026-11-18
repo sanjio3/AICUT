@@ -12,11 +12,18 @@ permissions:
 jobs:
   smoke:
     name: smoke and validate (py${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.11", "3.12"]
+        # Python 3.9 has no prebuilt interpreter for ubuntu-26.04, which is
+        # what the hosted runners ship now, so that combination is pinned to
+        # an older image. Everything else uses the current one.
+        os: [ubuntu-24.04]
+        python-version: ["3.11", "3.12"]
+        include:
+          - os: ubuntu-22.04
+            python-version: "3.9"
     steps:
       - uses: actions/checkout@v4
 
@@ -47,7 +54,7 @@ jobs:
 
   no-secrets:
     name: no local paths or secrets in tracked files
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
