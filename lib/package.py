@@ -71,22 +71,56 @@ def _market_meta(meta, skill_name):
     return out
 
 
+def _scalar(value):
+    """Render a frontmatter value as a single line.
+
+    A folded block (>-) is valid YAML but a naive reader that only looks at
+    the text after "description:" gets the literal ">-" instead of the
+    description. Every value in a packaged frontmatter is therefore written
+    as a single line, so both readers see the same thing.
+    """
+    if isinstance(value, (list, tuple)):
+        items = []
+        for v in value:
+            s = str(v).replace("\\", "\\\\").replace('"', '\\"')
+            items.append('"%s"' % s)
+        return "[%s]" % ", ".join(items)
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    s = str(value)
+    s = s.replace("\\", "\\\\").replace('"', '\\"')
+    s = s.replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+    while "  " in s:
+        s = s.replace("  ", " ")
+    return '"%s"' % s
+
+
+def _render_front(meta):
+    """Render a frontmatter dict as single-line YAML."""
+    lines = []
+    for key in ("name", "display_name", "display_name_en", "description",
+                "description_zh", "description_en", "allowed-tools",
+                "version", "author", "triggers", "uses", "api_version",
+                "agent_created", "examples_zh", "examples_en"):
+        if key not in meta:
+            continue
+        lines.append("%s: %s" % (key, _scalar(meta[key])))
+    return "\n".join(lines)
+
+
 def _market_front(text, meta, skill_name):
     """Rebuild the frontmatter block with the market fields added."""
-    import yaml
     m = FRONT.match(text)
     if not m:
         return text
     body = text[m.end():]
     merged = _market_meta(meta, skill_name)
-    block = yaml.safe_dump(merged, allow_unicode=True, sort_keys=False,
-                           default_flow_style=False).rstrip()
     # The packaged archive carries the kernel, so the placeholder points at the
     # directory the skill was unpacked into rather than at a repository path.
     body = body.replace("`$AICUT_ROOT`", "the directory this skill was unpacked into")
     body = body.replace("$AICUT_ROOT",
                         "the directory this skill was unpacked into")
-    return "---\n%s\n---\n%s" % (block, body)
+    return "---\n%s\n---\n%s" % (_render_front(merged), body)
 
 
 def _front(skill_dir):
@@ -167,7 +201,76 @@ def _kernel_files():
     return out
 
 
-def build(name, out_dir, force=False, market=False, with_kernel=False):
+def verify(zip_path):
+    """Check an archive against what a skill importer expects.
+
+    Importers differ in detail, but they agree on the essentials: a SKILL.md
+    somewhere near the root, and a frontmatter with a name and a description
+    that a YAML reader can actually parse. This function checks both with a
+    strict YAML reader and with the naive line reader that some importers use,
+    because the naive reader is where a folded description silently breaks.
+    """
+    import re
+    import zipfile
+    import yaml
+
+    problems = []
+    print("verify  : %s" % zip_path)
+    with zipfile.ZipFile(zip_path) as zf:
+        names = zf.namelist()
+        roots = [n for n in names if n.endswith("SKILL.md")]
+        if not roots:
+            problems.append("no SKILL.md in the archive")
+        else:
+            depth = min(n.count("/") for n in roots)
+            if depth > 1:
+                problems.append("SKILL.md is buried %d folders deep" % depth)
+            else:
+                print("  SKILL.md at %s" % roots[0])
+            text = zf.read(roots[0]).decode("utf-8")
+            m = FRONT.match(text)
+            if not m:
+                problems.append("SKILL.md has no YAML frontmatter block")
+            else:
+                raw = m.group(1)
+                try:
+                    meta = yaml.safe_load(raw) or {}
+                except yaml.YAMLError as exc:
+                    problems.append("frontmatter is not valid YAML: %s" % exc)
+                    meta = {}
+                for key in ("name", "description"):
+                    if not meta.get(key):
+                        problems.append("frontmatter has no '%s'" % key)
+                    else:
+                        print("  %-16s %s" % (key, str(meta[key])[:58]))
+                # The naive reader: it only looks at the text after the key.
+                for line in raw.splitlines():
+                    for key in ("name", "description"):
+                        if line.startswith(key + ":"):
+                            value = line.split(":", 1)[1].strip()
+                            if value in (">", ">-", "|", "|-", ">+", ">+") \
+                                    or not value:
+                                problems.append(
+                                    "'%s' uses a YAML block, a simple reader "
+                                    "sees %r instead of the text" % (key, value))
+                if meta.get("name") and not re.match(
+                        r"^[a-z0-9][a-z0-9-]*$", str(meta["name"])):
+                    problems.append("name %r is not lowercase-with-hyphens"
+                                    % meta["name"])
+        for needed in ("scripts/build.py", "references/params.yaml"):
+            if not any(n.endswith(needed) for n in names):
+                print("  note    %s missing, the skill cannot be executed"
+                      % needed)
+    if problems:
+        for p in problems:
+            print("  PROBLEM %s" % p)
+        return problems
+    print("  ready to upload")
+    return []
+
+
+def build(name, out_dir, force=False, market=False, with_kernel=False,
+          fold=False):
     """Package one skill. Returns (path, problems)."""
     skill_dir = os.path.join(SRC, name)
     if not os.path.isdir(skill_dir):
@@ -180,20 +283,25 @@ def build(name, out_dir, force=False, market=False, with_kernel=False):
     os.makedirs(out_dir, exist_ok=True)
     suffix = "-market" if market else ""
     out_path = os.path.join(out_dir, "%s%s.zip" % (stem, suffix))
+    # Some importers expect the archive to contain a folder named after the
+    # skill, others expect SKILL.md at the root. The fold option produces the
+    # former; the default is the latter.
+    prefix = "%s/" % stem if fold else ""
     with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for rel, path in _files(skill_dir):
             if market and rel == "SKILL.md":
                 text = io.open(path, "r", encoding="utf-8").read()
-                zf.writestr(rel, _market_front(text, meta, name))
+                zf.writestr(prefix + rel, _market_front(text, meta, name))
             else:
-                zf.write(path, rel)
+                zf.write(path, prefix + rel)
         if with_kernel:
             for rel, path in _kernel_files():
-                zf.write(path, rel)
+                zf.write(path, prefix + rel)
     return out_path, problems
 
 
-def build_all(out_dir, force=False, market=False, with_kernel=False):
+def build_all(out_dir, force=False, market=False, with_kernel=False,
+              fold=False):
     """Package every skill. Returns a list of (name, path, problems)."""
     results = []
     if not os.path.isdir(SRC):
@@ -204,6 +312,6 @@ def build_all(out_dir, force=False, market=False, with_kernel=False):
         if not os.path.isdir(os.path.join(SRC, name)):
             continue
         path, problems = build(name, out_dir, force=force, market=market,
-                               with_kernel=with_kernel)
+                               with_kernel=with_kernel, fold=fold)
         results.append((name, path, problems))
     return results

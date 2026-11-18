@@ -9,6 +9,7 @@ description: >-
   收尾柔化 / ending dissolve / soft fade out / ending blur / dissolve ending /
   dreamy outro, or complains that the ending is too blurry or still
   flickering. The tunable parameter table must be reported before rendering.
+description_zh: "结尾溶解特效：用两层不同强度的模糊按比例混合，做出持续柔化、压暗的收尾，而不是一下一下闪动。当用户要结尾溶解、结尾模糊、收尾柔化、ending dissolve，或抱怨结尾太糊、结尾还在闪需要调参时用这个技能。渲染前必须回传可调参数表。"
 version: 0.1.0
 api_version: 1
 uses: []

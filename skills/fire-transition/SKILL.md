@@ -9,6 +9,7 @@ description: >-
   fire transition / fire wipe / burning transition, or complains that the fire
   is too dark or blown out. The tunable parameter table must be reported
   before rendering, and the user confirms before anything is rendered.
+description_zh: "火焰转场特效：把火焰素材叠加到镜头切点上并按拍点吸附，同时压暗底图让火焰成为视觉焦点。当用户要火焰转场、燃烧转场、fire transition，或抱怨火焰太暗太亮需要调参时用这个技能。渲染前必须回传可调参数表，用户确认后才渲染。"
 version: 0.1.0
 api_version: 1
 uses: [_geom, _assets, _overlays]

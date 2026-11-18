@@ -334,9 +334,11 @@ def cmd_package(args):
     out = args.out or os.path.join(ROOT, "dist")
     market = bool(args.market)
     with_kernel = bool(args.with_kernel) or market
+    fold = bool(args.fold)
     if args.effect:
         path, problems = packagemod.build(args.effect, out, force=args.force,
-                                         market=market, with_kernel=with_kernel)
+                                         market=market,
+                                         with_kernel=with_kernel, fold=fold)
         if path is None:
             for p in problems:
                 print("ERROR   %s" % p)
@@ -345,15 +347,19 @@ def cmd_package(args):
             print("WARN    %s" % p)
         print("package : %s" % path)
         print("size    : %d bytes" % os.path.getsize(path))
+        if args.check:
+            packagemod.verify(path)
         return
     results = packagemod.build_all(out, force=args.force, market=market,
-                                   with_kernel=with_kernel)
+                                   with_kernel=with_kernel, fold=fold)
     if not results:
         print("no skills found under %s" % packagemod.SRC)
         return
     print("output  : %s" % out)
     if market:
         print("mode    : market (marketplace frontmatter fields, kernel included)")
+    if fold:
+        print("mode    : folded (SKILL.md sits in a folder named after the skill)")
     for name, path, problems in results:
         if path is None:
             print("FAILED  %-22s %s" % (name, "; ".join(problems)))
@@ -362,6 +368,8 @@ def cmd_package(args):
                   (name, path, os.path.getsize(path)))
             for p in problems:
                 print("        WARN  %s" % p)
+            if args.check:
+                packagemod.verify(path)
 
 
 def main():
@@ -432,6 +440,11 @@ def main():
                    help="package even when the contract check reports problems")
     p.add_argument("--market", action="store_true",
                    help="add the frontmatter fields a skill marketplace requires")
+    p.add_argument("--fold", action="store_true",
+                   help="put the skill in a folder named after it, for "
+                        "importers that expect that shape")
+    p.add_argument("--check", action="store_true",
+                   help="verify each archive against what an importer expects")
     p.add_argument("--with-kernel", action="store_true",
                    help="include lib/ and aicut.py so the package is executable")
 

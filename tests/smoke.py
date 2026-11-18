@@ -188,6 +188,52 @@ def main():
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
+    def c_importable():
+        """A packaged archive must survive what a skill importer reads."""
+        import re
+        import shutil
+        import tempfile
+        import zipfile
+
+        import yaml
+        from lib import package as pm
+        tmp = tempfile.mkdtemp(prefix="aicut_import_")
+        try:
+            ok = True
+            detail = []
+            for fold in (False, True):
+                path, problems = pm.build("manga-split", tmp, market=True,
+                                         with_kernel=True, fold=fold)
+                if path is None:
+                    return False, "; ".join(problems)
+                with zipfile.ZipFile(path) as zf:
+                    names = zf.namelist()
+                    roots = [n for n in names if n.endswith("SKILL.md")]
+                    if not roots:
+                        return False, "no SKILL.md (fold=%s)" % fold
+                    if min(n.count("/") for n in roots) > 1:
+                        return False, "SKILL.md too deep (fold=%s)" % fold
+                    text = zf.read(roots[0]).decode("utf-8")
+                    raw = re.match(r"\A---\s*\n(.*?)\n---\s*\n", text,
+                                   re.S).group(1)
+                    meta = yaml.safe_load(raw) or {}
+                    if not meta.get("name") or not meta.get("description"):
+                        return False, "frontmatter incomplete (fold=%s)" % fold
+                    # A naive reader only sees the text after the key. A
+                    # folded YAML block would hide the description from it.
+                    for line in raw.splitlines():
+                        for key in ("name", "description"):
+                            if line.startswith(key + ":"):
+                                value = line.split(":", 1)[1].strip()
+                                if value in (">", ">-", "|", "|-"):
+                                    return False, (
+                                        "%s uses a block, a simple reader sees "
+                                        "%r (fold=%s)" % (key, value, fold))
+                    detail.append("fold=%s:%s" % (fold, roots[0]))
+            return ok, " | ".join(detail)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
     check("catalog scans skills without trigger conflicts", c_catalog)
     check("user phrase maps to the right effects", c_lookup)
     check("all built-in skills pass validate-effect", c_validate)
@@ -195,6 +241,7 @@ def main():
     check("installer discovers named skills", c_install)
     check("every skill packages into a valid archive", c_package)
     check("a packaged archive runs on its own", c_standalone)
+    check("a packaged archive is readable by an importer", c_importable)
     check("plan hash changes when the plan changes", c_confirm)
     check("selection.effects really restricts the rotation", c_selection)
     check("parameter override wins over local defaults", c_merge)

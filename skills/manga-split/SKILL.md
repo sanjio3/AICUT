@@ -9,6 +9,7 @@ description: >-
   漫画分格 / 漫画分屏 / 分镜 / manga split / comic panel split / four panel /
   manga panels / comic cut, or wants the frame cut into blocks. The tunable
   parameter table must be reported before rendering.
+description_zh: "漫画分格特效：把一个镜头切成四格错位画面并画白色十字分格线，两格去饱和、两格高饱和，形成漫画分镜的对比感。当用户要漫画分格、漫画分屏、分镜、manga split，或要求把画面切成几块时用这个技能。渲染前必须回传可调参数表。"
 version: 0.1.0
 api_version: 1
 uses: [_geom]
