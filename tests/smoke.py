@@ -124,10 +124,16 @@ def main():
                     continue
                 with zipfile.ZipFile(path) as zf:
                     names = zf.namelist()
-                    if "SKILL.md" not in names:
-                        bad.append("%s:SKILL.md not at root" % name)
+                    roots = [n for n in names if n.endswith("SKILL.md")]
+                    if not roots:
+                        bad.append("%s:no SKILL.md" % name)
                         continue
-                    txt = zf.read("SKILL.md").decode("utf-8")
+                    # The marketplace publishes a folder named after the skill,
+                    # so SKILL.md sits one level down.
+                    if min(n.count("/") for n in roots) != 1:
+                        bad.append("%s:SKILL.md is not in a folder" % name)
+                        continue
+                    txt = zf.read(roots[0]).decode("utf-8")
                     m = re.match(r"\A---\s*\n(.*?)\n---\s*\n", txt, re.S)
                     if not m:
                         bad.append("%s:no frontmatter" % name)
@@ -172,14 +178,20 @@ def main():
             with zipfile.ZipFile(path) as zf:
                 zf.extractall(work)
             names = zipfile.ZipFile(path).namelist()
+            # The archive holds a folder named after the skill, so the kernel
+            # and the skill live one level down.
+            tops = {n.split("/")[0] for n in names if "/" in n}
+            if len(tops) != 1:
+                return False, "expected one top folder, got %s" % sorted(tops)
+            root = os.path.join(work, tops.pop())
             for needed in ("SKILL.md", "aicut.py", "lib/plan.py"):
-                if needed not in names:
+                if not os.path.exists(os.path.join(root, needed)):
                     return False, "archive is missing %s" % needed
             env = dict(os.environ)
-            env["PYTHONPATH"] = work
+            env["PYTHONPATH"] = root
             proc = subprocess.run(
                 [sys.executable, "aicut.py", "catalog"],
-                cwd=work, env=env, capture_output=True, text=True, timeout=120)
+                cwd=root, env=env, capture_output=True, text=True, timeout=120)
             if proc.returncode != 0:
                 return False, (proc.stderr or proc.stdout)[-200:]
             if "manga-split" not in proc.stdout:
@@ -201,7 +213,7 @@ def main():
         try:
             ok = True
             detail = []
-            for fold in (False, True):
+            for fold in (True, False):
                 path, problems = pm.build("manga-split", tmp, market=True,
                                          with_kernel=True, fold=fold)
                 if path is None:
@@ -211,24 +223,44 @@ def main():
                     roots = [n for n in names if n.endswith("SKILL.md")]
                     if not roots:
                         return False, "no SKILL.md (fold=%s)" % fold
-                    if min(n.count("/") for n in roots) > 1:
+                    depth = min(n.count("/") for n in roots)
+                    if depth > 1:
                         return False, "SKILL.md too deep (fold=%s)" % fold
+                    if fold and depth != 1:
+                        return False, (
+                            "the marketplace shape needs SKILL.md inside a "
+                            "folder (fold=%s)" % fold)
+                    if not fold and depth != 0:
+                        return False, (
+                            "the flat shape needs SKILL.md at the root "
+                            "(fold=%s)" % fold)
                     text = zf.read(roots[0]).decode("utf-8")
                     raw = re.match(r"\A---\s*\n(.*?)\n---\s*\n", text,
                                    re.S).group(1)
                     meta = yaml.safe_load(raw) or {}
                     if not meta.get("name") or not meta.get("description"):
                         return False, "frontmatter incomplete (fold=%s)" % fold
-                    # A naive reader only sees the text after the key. A
-                    # folded YAML block would hide the description from it.
-                    for line in raw.splitlines():
-                        for key in ("name", "description"):
+                    # A strict reader, a naive line reader and a regex reader
+                    # must all arrive at the same name and description.
+                    for key in ("name", "description"):
+                        y = str(meta.get(key) or "")
+                        n = ""
+                        for line in raw.splitlines():
                             if line.startswith(key + ":"):
-                                value = line.split(":", 1)[1].strip()
-                                if value in (">", ">-", "|", "|-"):
-                                    return False, (
-                                        "%s uses a block, a simple reader sees "
-                                        "%r (fold=%s)" % (key, value, fold))
+                                n = line.split(":", 1)[1].strip()
+                                break
+                        r = ""
+                        mm = re.search(r"^%s:\s*(.+)$" % key, raw, re.M)
+                        if mm:
+                            r = mm.group(1).strip()
+                        for value in (n, r):
+                            if len(value) > 1 and value[0] == '"' \
+                                    and value[-1] == '"':
+                                value = value[1:-1]
+                            if value and value != y:
+                                return False, (
+                                    "a simple reader sees a different '%s' "
+                                    "(fold=%s)" % (key, fold))
                     detail.append("fold=%s:%s" % (fold, roots[0]))
             return ok, " | ".join(detail)
         finally:

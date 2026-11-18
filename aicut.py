@@ -334,7 +334,9 @@ def cmd_package(args):
     out = args.out or os.path.join(ROOT, "dist")
     market = bool(args.market)
     with_kernel = bool(args.with_kernel) or market
-    fold = bool(args.fold)
+    # The marketplace publishes a folder named after the skill, so that is the
+    # default shape. --flat is for importers that want SKILL.md at the root.
+    fold = not args.flat
     if args.effect:
         path, problems = packagemod.build(args.effect, out, force=args.force,
                                          market=market,
@@ -359,7 +361,9 @@ def cmd_package(args):
     if market:
         print("mode    : market (marketplace frontmatter fields, kernel included)")
     if fold:
-        print("mode    : folded (SKILL.md sits in a folder named after the skill)")
+        print("mode    : marketplace shape (a folder named after the skill)")
+    else:
+        print("mode    : flat (SKILL.md at the archive root)")
     for name, path, problems in results:
         if path is None:
             print("FAILED  %-22s %s" % (name, "; ".join(problems)))
@@ -440,9 +444,9 @@ def main():
                    help="package even when the contract check reports problems")
     p.add_argument("--market", action="store_true",
                    help="add the frontmatter fields a skill marketplace requires")
-    p.add_argument("--fold", action="store_true",
-                   help="put the skill in a folder named after it, for "
-                        "importers that expect that shape")
+    p.add_argument("--flat", action="store_true",
+                   help="put SKILL.md at the archive root instead of inside a "
+                        "folder named after the skill")
     p.add_argument("--check", action="store_true",
                    help="verify each archive against what an importer expects")
     p.add_argument("--with-kernel", action="store_true",

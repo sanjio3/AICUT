@@ -88,10 +88,17 @@ def _scalar(value):
     if isinstance(value, bool):
         return "true" if value else "false"
     s = str(value)
-    s = s.replace("\\", "\\\\").replace('"', '\\"')
     s = s.replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
     while "  " in s:
         s = s.replace("  ", " ")
+    # A plain identifier is written unquoted, the way the official marketplace
+    # packages write it. A naive reader then sees exactly the same characters a
+    # YAML parser does. Anything with a colon, a quote or a leading special
+    # character is quoted so the YAML stays valid.
+    if re.match(r"^[A-Za-z0-9][A-Za-z0-9 _./+-]*$", s) and \
+            not s.endswith(" ") and ": " not in s and " #" not in s:
+        return s
+    s = s.replace("\\", "\\\\").replace('"', '\\"')
     return '"%s"' % s
 
 
@@ -253,6 +260,28 @@ def verify(zip_path):
                                 problems.append(
                                     "'%s' uses a YAML block, a simple reader "
                                     "sees %r instead of the text" % (key, value))
+                # A strict reader, a naive line reader and a regex reader must
+                # all arrive at the same name and description. Importers use
+                # different ones, and a mismatch means one of them sees
+                # something the others do not.
+                for key in ("name", "description"):
+                    y = str(meta.get(key) or "")
+                    n = r = ""
+                    for line in raw.splitlines():
+                        if line.startswith(key + ":"):
+                            n = line.split(":", 1)[1].strip()
+                            break
+                    mm = re.search(r"^%s:\s*(.+)$" % key, raw, re.M)
+                    if mm:
+                        r = mm.group(1).strip()
+                    for label, value in (("line", n), ("regex", r)):
+                        if len(value) > 1 and value[0] == '"' \
+                                and value[-1] == '"':
+                            value = value[1:-1]
+                        if value and value != y:
+                            problems.append(
+                                "the %s reader sees a different '%s' than "
+                                "the YAML parser" % (label, key))
                 if meta.get("name") and not re.match(
                         r"^[a-z0-9][a-z0-9-]*$", str(meta["name"])):
                     problems.append("name %r is not lowercase-with-hyphens"
@@ -270,7 +299,7 @@ def verify(zip_path):
 
 
 def build(name, out_dir, force=False, market=False, with_kernel=False,
-          fold=False):
+          fold=True):
     """Package one skill. Returns (path, problems)."""
     skill_dir = os.path.join(SRC, name)
     if not os.path.isdir(skill_dir):
@@ -281,16 +310,15 @@ def build(name, out_dir, force=False, market=False, with_kernel=False,
     meta = _front(skill_dir)
     stem = str(meta.get("name") or name)
     os.makedirs(out_dir, exist_ok=True)
-    # The archive shape is part of the file name, so a root-layout archive and
-    # a folded one never end up as two files with the same name that nobody
-    # can tell apart.
+    # The archive shape is part of the file name, so two archives never end up
+    # with the same name and a different layout.
     suffix = "-market" if market else ""
-    if fold:
-        suffix += "-folded"
+    if not fold:
+        suffix += "-flat"
     out_path = os.path.join(out_dir, "%s%s.zip" % (stem, suffix))
-    # Some importers expect the archive to contain a folder named after the
-    # skill, others expect SKILL.md at the root. The fold option produces the
-    # former; the default is the latter.
+    # The official marketplace publishes skills as a folder named after the
+    # skill, with SKILL.md inside it, so that is the default shape. The flat
+    # layout is kept for importers that want SKILL.md at the archive root.
     prefix = "%s/" % stem if fold else ""
     with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for rel, path in _files(skill_dir):
@@ -306,7 +334,7 @@ def build(name, out_dir, force=False, market=False, with_kernel=False,
 
 
 def build_all(out_dir, force=False, market=False, with_kernel=False,
-              fold=False):
+              fold=True):
     """Package every skill. Returns a list of (name, path, problems)."""
     results = []
     if not os.path.isdir(SRC):
