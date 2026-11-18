@@ -132,6 +132,8 @@ local path is stored in the repository.
 - `python aicut.py diff --a <id1> --b <id2>` — parameter and metric diff
 - `python aicut.py install [--dry-run] [--project <dir>] [--force]` — install skills
 - `python aicut.py package --effect <name>` — build a distributable zip
+- `python aicut.py package --market [--check]` — build an archive a marketplace accepts
+- `python aicut.py publish --tag <v0.4.0>` — publish the archives as release assets
 
 ## Mapping user language to parameters
 

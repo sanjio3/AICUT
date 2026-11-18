@@ -180,6 +180,7 @@ python aicut.py package --effect my-effect   # build a distributable zip
 - `runs/<id>/` a snapshot per run, append-only, for diff replay; `runs/_cache/shots/` is the cache shared across runs.
 - `tests/smoke.py` a zero-dependency baseline, no pytest, no media, no ffmpeg needed.
 - `examples/make_demo_assets.py` generates the synthetic demo clips.
+- `tools/publish_release.py` uploads the packaged archives to a GitHub release; an archive with the same name is replaced, so a listing keeps one current copy.
 - `.github/` issue and pull request templates, CODEOWNERS, CI.
 
 ## Design constraints

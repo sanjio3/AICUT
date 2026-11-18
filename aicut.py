@@ -376,6 +376,26 @@ def cmd_package(args):
                 packagemod.verify(path)
 
 
+def cmd_publish(args):
+    """Publish the skill packages as GitHub release assets."""
+    import subprocess
+    script = os.path.join(ROOT, "tools", "publish_release.py")
+    if not os.path.exists(script):
+        raise SystemExit("publish script missing: %s" % script)
+    notes = args.notes_file
+    if notes is None:
+        default = os.path.join(ROOT, "docs",
+                               "release-notes-%s.md" % args.tag)
+        if os.path.exists(default):
+            notes = default
+    cmd = [sys.executable, script, "--tag", args.tag]
+    if notes:
+        cmd += ["--notes-file", notes]
+    if args.dry_run:
+        cmd.append("--dry-run")
+    raise SystemExit(subprocess.call(cmd, cwd=ROOT))
+
+
 def main():
     ap = argparse.ArgumentParser(prog="aicut")
     sub = ap.add_subparsers(dest="action")
@@ -436,6 +456,13 @@ def main():
                    help="also install lib/ and aicut.py so the skill runs "
                         "without the repository")
 
+    p = sub.add_parser("publish")
+    p.add_argument("--tag", required=True,
+                   help="release tag, for example v0.4.0")
+    p.add_argument("--notes-file", default=None,
+                   help="markdown file with the release notes")
+    p.add_argument("--dry-run", action="store_true")
+
     p = sub.add_parser("package")
     p.add_argument("--effect", default=None,
                    help="package one skill; omit to package all of them")
@@ -460,7 +487,8 @@ def main():
                 "attribute": cmd_attribute, "plan": cmd_plan,
                 "render": cmd_render, "qa": cmd_qa, "diff": cmd_diff,
                 "confirm": cmd_confirm,
-                "install": cmd_install, "package": cmd_package}
+                "install": cmd_install, "package": cmd_package,
+                "publish": cmd_publish}
     if not args.action:
         ap.print_help()
         return
