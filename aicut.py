@@ -324,7 +324,7 @@ def cmd_install(args):
         target = os.path.expanduser(os.path.join("~", ".workbuddy", "skills"))
     only = [x.strip() for x in args.only.split(",")] if args.only else None
     rc = installmod.install(target, force=args.force, dry_run=args.dry_run,
-                            only=only)
+                            only=only, with_kernel=args.with_kernel)
     if rc:
         raise SystemExit(rc)
 
@@ -420,6 +420,9 @@ def main():
     p.add_argument("--only", default=None, help="comma-separated effect names")
     p.add_argument("--force", action="store_true")
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--with-kernel", action="store_true",
+                   help="also install lib/ and aicut.py so the skill runs "
+                        "without the repository")
 
     p = sub.add_parser("package")
     p.add_argument("--effect", default=None,

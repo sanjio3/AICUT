@@ -19,6 +19,22 @@ SRC = os.path.join(ROOT, "skills")
 PLACEHOLDER = "$AICUT_ROOT"
 
 
+def _kernel_files():
+    """The runtime that has to travel with a self-contained install."""
+    out = []
+    lib_dir = os.path.join(ROOT, "lib")
+    if os.path.isdir(lib_dir):
+        for fn in sorted(os.listdir(lib_dir)):
+            if fn.endswith(".py"):
+                out.append((os.path.join("lib", fn),
+                            os.path.join(lib_dir, fn)))
+    for fn in ("aicut.py", "params.yaml"):
+        p = os.path.join(ROOT, fn)
+        if os.path.exists(p):
+            out.append((fn, p))
+    return out
+
+
 def _front_name(skill_dir):
     import re
     import yaml
@@ -52,7 +68,8 @@ def _skills(only=None):
     return out
 
 
-def install(target, force=False, dry_run=False, only=None, quiet=False):
+def install(target, force=False, dry_run=False, only=None, quiet=False,
+            with_kernel=False):
     skills = _skills(only)
     if not skills:
         print("no skills found under %s" % SRC)
@@ -60,6 +77,8 @@ def install(target, force=False, dry_run=False, only=None, quiet=False):
     print("source : %s" % SRC)
     print("target : %s" % target)
     print("root   : %s" % ROOT)
+    if with_kernel:
+        print("kernel : included, so the skill runs on its own")
     if dry_run:
         print("(dry-run: nothing will be written)")
     rc = 0
@@ -79,7 +98,17 @@ def install(target, force=False, dry_run=False, only=None, quiet=False):
                         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
         sk = os.path.join(dst, "SKILL.md")
         text = io.open(sk, "r", encoding="utf-8").read()
-        if PLACEHOLDER in text:
+        if with_kernel:
+            # A self-contained install: the kernel travels with the skill, so
+            # the placeholder points at the directory the skill lives in.
+            for rel, path in _kernel_files():
+                kdst = os.path.join(dst, rel)
+                os.makedirs(os.path.dirname(kdst), exist_ok=True)
+                shutil.copy2(path, kdst)
+            if PLACEHOLDER in text:
+                io.open(sk, "w", encoding="utf-8").write(
+                    text.replace(PLACEHOLDER, "the directory this skill is in"))
+        elif PLACEHOLDER in text:
             io.open(sk, "w", encoding="utf-8").write(
                 text.replace(PLACEHOLDER, ROOT.replace("\\", "/")))
         print("        installed")
@@ -96,6 +125,9 @@ def main(argv=None):
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--only", default=None, help="comma-separated effect names")
+    ap.add_argument("--with-kernel", action="store_true",
+                    help="also install lib/ and aicut.py so the skill runs "
+                         "without the repository")
     a = ap.parse_args(argv)
     if a.project:
         target = os.path.join(os.path.abspath(a.project), ".workbuddy", "skills")
@@ -104,7 +136,8 @@ def main(argv=None):
     else:
         target = os.path.expanduser(os.path.join("~", ".workbuddy", "skills"))
     only = [x.strip() for x in a.only.split(",")] if a.only else None
-    return install(target, force=a.force, dry_run=a.dry_run, only=only)
+    return install(target, force=a.force, dry_run=a.dry_run, only=only,
+                   with_kernel=a.with_kernel)
 
 
 if __name__ == "__main__":
