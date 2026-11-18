@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security issue
+    url: https://github.com/sanjio3/AICUT/security/advisories/new
+    about: Please report vulnerabilities privately instead of opening a public issue.
+  - name: Question or discussion
+    url: https://github.com/sanjio3/AICUT/discussions
+    about: Ask about usage, effects or how to contribute.

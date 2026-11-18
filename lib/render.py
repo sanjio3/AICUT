@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""渲染层：逐镜独立出片 + 内容哈希缓存 + concat + 混音。"""
+"""Render layer: per-shot rendering, content-hash cache, concat, audio mix."""
 import hashlib
 import importlib.util
 import io
@@ -23,7 +23,8 @@ def load_effect(name):
 
 
 def effect_code_hash(name):
-    """effect 的 build.py 改了，缓存必须失效，否则改代码看不到新画面。"""
+    """When a skill's build.py changes the cache must be invalidated, otherwise
+    editing the code would not show up in the output."""
     if name == "base":
         return "base"
     p = os.path.abspath(os.path.join("skills", name, "scripts", "build.py"))
@@ -38,7 +39,8 @@ def shot_key(shot, caps, assets_index=None):
         "src": shot["src"], "seg": shot["seg"], "speed": shot["speed"],
         "effect": shot["effect"], "params": shot["params"],
         "caps": caps["hash"],
-        # 叠加素材是从 prepare 索引里查出来的，索引变了缓存必须失效
+        # Overlay material is looked up in the prepare index, so a changed
+        # index has to invalidate the cache
         "overlays": (assets_index or {}).get("overlays", {}),
         "effect_code": effect_code_hash(shot["effect"]),
     }
@@ -47,7 +49,8 @@ def shot_key(shot, caps, assets_index=None):
 
 
 def base_chain(shot, cfg, caps):
-    """基础链输出 [g]。推镜幅度来自 card 旋钮，保证每帧都有像素变化。"""
+    """The base chain outputs [g]. The push amount comes from the card knobs,
+    which guarantees every frame differs from the previous one."""
     pr = cfg["project"]
     w, h, fps = int(pr["width"]), int(pr["height"]), int(pr["fps"])
     p = shot["params"]
@@ -69,7 +72,8 @@ def base_chain(shot, cfg, caps):
 
 
 def render_shot(shot, cfg, caps, shots_dir, assets_index=None):
-    # 文件名就是内容哈希，缓存跨 run 共享：用户调一个参数只让命中的镜头失效。
+    # The file name is the content hash, so the cache is shared across runs:
+    # changing one parameter only invalidates the shots that use it.
     key = shot_key(shot, caps, assets_index)
     out = os.path.join(shots_dir, key + ".mp4")
     if os.path.exists(out) and os.path.getsize(out) > 600:
@@ -82,7 +86,8 @@ def render_shot(shot, cfg, caps, shots_dir, assets_index=None):
     if shot["effect"] != "base":
         mod = load_effect(shot["effect"])
         p = dict(shot["params"])
-        # 内部字段（下划线开头）不属于用户可调旋钮，只给 effect 运行期取用
+        # Internal fields (leading underscore) are not user-tunable knobs,
+        # they only exist for the effect at runtime
         p["_overlays"] = cfg["paths"]["overlays"]
         p["_assets"] = assets_index or {}
         p["_geom"] = {"w": cfg["project"]["width"],
@@ -128,13 +133,15 @@ def finish(files, plan, cfg, run_dir):
     lst = os.path.join(run_dir, "list.txt")
     with io.open(lst, "w", encoding="utf-8") as fh:
         for f in files:
-            # 旧版 ffmpeg 的 concat demuxer 会把盘符开头的绝对路径当相对路径拼接，
-            # 必须写相对 list.txt 所在目录的路径。
+            # The concat demuxer of the old ffmpeg build treats a
+            # drive-letter absolute path as relative and concatenates it, so
+            # the path has to be relative to the directory of list.txt.
             rel = os.path.relpath(str(f), os.path.dirname(lst)).replace("\\", "/")
             fh.write("file '%s'\n" % rel)
     silent = os.path.join(run_dir, "silent.mp4")
-    # 该构建按 cwd 解析 concat 的 file 条目，显式把 cwd 设成 run 目录，
-    # -i 与输出都用相对文件名，避免盘符路径被误判。
+    # This build resolves concat file entries against the working directory,
+    # so cwd is set to the run directory and both the input and the output use
+    # relative names to keep drive-letter paths from being misread.
     run([ff, "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", "list.txt",
          "-c:v", "libx264", "-crf", "17", "-preset", "medium",
          "-pix_fmt", "yuv420p", "silent.mp4"], cwd=run_dir)

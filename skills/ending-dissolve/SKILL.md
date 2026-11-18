@@ -1,44 +1,70 @@
 ---
 name: aicut-ending-dissolve
 description: >-
-  结尾溶解特效：用两层不同强度的模糊按比例混合，做出持续柔化、压暗的收尾，
-  而不是一下一下的闪动。This skill should be used when the user asks for 结尾溶解 /
-  结尾模糊 / 收尾柔化 / ending dissolve，或抱怨「结尾太糊」「结尾还在闪」需要调参时。
-  渲染前必须回传可调参数表。
+  Ending dissolve effect: mixes two blur strengths by a ratio to produce a
+  continuously softening and dimming ending rather than a flickering one.
+  This skill should be used when the user asks for 结尾溶解 / 结尾模糊 /
+  收尾柔化 / ending dissolve / soft fade out / ending blur / dissolve ending /
+  dreamy outro, or complains that the ending is too blurry or still
+  flickering. The tunable parameter table must be reported before rendering.
 version: 0.1.0
+api_version: 1
+uses: []
 agent_created: true
 allowed-tools: Bash, Read, Write, Edit
-triggers: ["结尾溶解", "结尾模糊", "收尾柔化", "ending dissolve", "结尾太糊"]
+triggers: ["结尾溶解", "结尾模糊", "收尾柔化", "ending dissolve", "soft fade out", "ending blur", "dissolve ending", "dreamy outro", "结尾太糊"]
 ---
 
-# 结尾溶解
+# Ending dissolve
 
-片尾专用：`split=2` 拆两路，一路轻模糊并压暗、一路重模糊，再按 `keep/mix` 加权混合。两层都模糊保证了「一直糊」而不是单帧闪动，`mix` 控制重模糊那层占比。
+An ending-only effect. `split=2` produces two streams, one lightly blurred and
+dimmed, one heavily blurred, and they are blended by a keep/mix ratio. Both
+streams are blurred, which is what makes the result continuously soft rather
+than alternating between sharp and soft frames; `mix` controls how much of the
+heavier blur is blended in.
 
-## 何时使用
+## When to use
 
-用户说出上面 `triggers` 里的词，或指出片尾需要「持续模糊收尾」「不要闪」时加载本 skill。只加载本目录。
+Load this skill when the user says any of the words in `triggers`, or asks for
+a soft dissolve at the end of the cut. Load only this directory.
 
-## 怎么用
+## How to use
 
-1. 所有命令都在 AICUT 仓库根目录执行（`$AICUT_ROOT`）。先跑 `python aicut.py params --effect ending-dissolve` 回传参数表。
-2. 用户确认后：`python aicut.py plan --run <id> --effects ending-dissolve`（通常配合 `base` 一起轮替，只作用于尾段）。
-3. `render` 后 `qa`，关注 `laplacian_var` 明显下降、`V` 略降但不塌。
+1. Run every command from the AICUT repository root (`$AICUT_ROOT`). Start
+   with `python aicut.py params --effect ending-dissolve` and report the
+   parameter table.
+2. After the user answers: `python aicut.py plan --run <id> --effects ending-dissolve`
+   (usually together with `base`, in which case it only applies to the tail).
+3. Render, then run `qa`. Watch `laplacian_var` dropping and `V` easing down
+   without collapsing.
 
-## 渲染前必须回传的参数表
+## Parameter table to report before rendering
 
-- `gblur_sigma` 默认 8（全局组），范围见根 `params.yaml`，决定基础模糊半径。
-- `gamma` 默认 0.68，范围 0.40–1.00，压暗系数，影响 V 与 dark_pct。
-- `mix` 默认 0.28，范围 0–0.60，第二层模糊占比，越高越糊，影响 motion_p90 与 laplacian_var。
+- `gblur_sigma` defaults to 8 (global group), the range is in the root
+  `params.yaml`, and it sets the base blur radius.
+- `gamma` defaults to 0.68, range 0.40–1.00, the dimming factor, affects V and
+  dark_pct.
+- `mix` defaults to 0.28, range 0–0.60, the share of the second blur layer,
+  affects motion_p90 and laplacian_var.
 
-## 验收
+## Acceptance
 
-`laplacian_var` 应显著低于正片（糊）；`V` 略降但不出现大面积暗场（`dark_pct < 2%`）；连续抽帧确认是全片持续模糊，不是隔帧清晰。
+`laplacian_var` should be clearly lower than in the body of the cut; `V`
+drops a little but must not create large dark areas (`dark_pct < 2%`). Pull
+several consecutive frames to confirm the blur is continuous rather than
+alternating between sharp and soft.
 
-## 已知坑
+## Known pitfalls
 
-用 `blend all_expr` 而不是 `all_mode=screen`，后者会把 U/V 抬高染色。两层都要先 `format=yuv420p` 再混合。详见 `references/pitfalls.md`。
+Use `blend all_expr` and not `all_mode=screen`, because the latter raises the
+U/V planes and tints the frame. Both layers need `format=yuv420p` before they
+are blended, otherwise the pixel formats do not match. See
+`references/pitfalls.md`.
 
-## 当前实现边界
+## Current implementation boundary
 
-参数化的双层模糊，只作用于被 `plan` 分配到该特效的镜头（尾段）。v30 的 96 帧交叉溶解序列、每 4 帧一换的连续模糊节奏未迁移——`dissolve_frames` 目前只写进 plan.json，不影响滤镜链。
+A parameterised double blur applied to the shots the planner assigns to this
+effect, which is the tail of the cut. The 96-frame cross-dissolve sequence and
+the continuous blur rhythm that changes every four frames from the reference
+cut are not migrated; `dissolve_frames` is currently only recorded in
+plan.json and does not drive the filter chain.

@@ -1,46 +1,73 @@
 ---
 name: aicut-manga-split
 description: >-
-  漫画分格特效：把一个镜头切成四格错位画面并画白色十字分格线，两格去饱和、两格高饱和，
-  形成漫画分镜的对比感。This skill should be used when the user asks for 漫画分格 / 漫画分屏 /
-  分镜 / manga split，或要求「画面切成几块」「漫画感」时。渲染前必须回传可调参数表。
+  Comic panel split effect: cuts one shot into four offset panels and draws
+  white cross dividers, two panels desaturated and two highly saturated, for a
+  comic panel contrast. This skill should be used when the user asks for
+  漫画分格 / 漫画分屏 / 分镜 / manga split / comic panel split / four panel /
+  manga panels / comic cut, or wants the frame cut into blocks. The tunable
+  parameter table must be reported before rendering.
 version: 0.1.0
+api_version: 1
+uses: [_geom]
 agent_created: true
 allowed-tools: Bash, Read, Write, Edit
-triggers: ["漫画分格", "漫画分屏", "分镜", "manga split", "漫画感"]
+triggers: ["漫画分格", "漫画分屏", "分镜", "manga split", "comic panel split", "four panel", "manga panels", "comic cut", "panel grid"]
 ---
 
-# 漫画分格
+# Comic panel split
 
-规则四格分屏：`split=4` 拆成四路，每格裁切区域彼此错位（不是按原象限拼回原位，否则几何完全还原、肉眼看不出分屏），两格降饱和成黑白、两格提饱和，最后叠白色十字分格线。
+A regular four-panel split. `split=4` produces four streams, each cropped to a
+slightly offset region. Cropping the original quadrants and putting them back
+in place would restore the original geometry exactly, leaving only a colour
+difference that the eye cannot read as a split, so the offsets are essential.
+Two panels are desaturated, two are boosted, and white cross dividers are
+drawn on top.
 
-## 何时使用
+## When to use
 
-用户说出上面 `triggers` 里的词，或要求「把画面切块」「漫画分镜感」时加载本 skill。只加载本目录。
+Load this skill when the user says any of the words in `triggers`, or asks for
+the frame to be cut into blocks with a comic panel feel. Load only this
+directory.
 
-## 怎么用
+## How to use
 
-1. 所有命令都在 AICUT 仓库根目录执行（`$AICUT_ROOT`）。先跑 `python aicut.py params --effect manga-split`，把参数表回传给用户。
-2. 用户确认后：`python aicut.py plan --run <id> --effects manga-split`。
-3. `python aicut.py render --run <id>` 出片，`python aicut.py qa --run <id>` 取指标。
-4. 细节见 `references/pitfalls.md`。
+1. Run every command from the AICUT repository root (`$AICUT_ROOT`). Start
+   with `python aicut.py params --effect manga-split` and report the parameter
+   table to the user.
+2. After the user answers: `python aicut.py plan --run <id> --effects manga-split`.
+3. `python aicut.py render --run <id>` to render, then `python aicut.py qa --run <id>`
+   for the metrics.
+4. Details live in `references/pitfalls.md`.
 
-## 渲染前必须回传的参数表
+## Parameter table to report before rendering
 
-- `cells` 锁定 4，当前实现只支持规则四格。
-- `mono_sat` 默认 0.05，范围 0–1，黑白格饱和度，影响 V 与 laplacian_var。
-- `color_sat` 默认 1.40，范围 0.5–2.5，彩色格饱和度，影响 V。
-- `contrast` 默认 1.25，范围 0.9–2.0，统一对比度，影响 V 与 dark_pct。
-- `beat_align` 默认开，由 `lib/plan.py` 消费。
+- `cells` is locked at 4; the current implementation only does regular four panels.
+- `mono_sat` defaults to 0.05, range 0–1, saturation of the black and white
+  panels, affects V and laplacian_var.
+- `color_sat` defaults to 1.40, range 0.5–2.5, saturation of the colour panels,
+  affects V.
+- `contrast` defaults to 1.25, range 0.9–2.0, contrast shared by all panels,
+  affects V and dark_pct.
+- `beat_align` defaults to on, consumed by `lib/plan.py`.
 
-## 验收
+## Acceptance
 
-关注 `V` 不因双色对比剧烈漂移、`dark_pct < 2%`（黑白格压太狠会爆）、`laplacian_var` 因分格线抬高属正常。分格线必须可见，抽一帧目视确认。
+`V` should not swing wildly because of the two-tone contrast, `dark_pct < 2%`
+(the black and white panels can go too dark), and a higher `laplacian_var` is
+expected because of the dividers. The dividers must be visible: pull one frame
+and look at it.
 
-## 已知坑
+## Known pitfalls
 
-`split=4` 后四路必须各自 `crop` 到 `w//2 x h//2` 再 `hstack`/`vstack`，否则尺寸不匹配。错位量不能超过半格，否则出现边缘黑边。详见 `references/pitfalls.md`。
+After `split=4` each of the four streams must be cropped to `w//2 x h//2`
+before `hstack`/`vstack`, otherwise the sizes do not match and the filter
+fails. The offset must stay below half a panel or the crop reaches past the
+edge and leaves a black border. See `references/pitfalls.md`.
 
-## 当前实现边界
+## Current implementation boundary
 
-只支持规则四格。v30 的不规则斜切蒙版、随机分格形状未迁移——那需要预生成蒙版序列或 `maskedmerge` 配合动态蒙版，属下一阶段。`cells` 锁死为 4 是这一限制的直接体现。
+Regular four panels only. The irregular slanted mask and randomised panel
+shapes from the reference cut are not migrated; those need a pre-generated mask
+sequence or dynamic masks with `maskedmerge`, which is the next stage. The
+lock on `cells` exists precisely because of that limit.

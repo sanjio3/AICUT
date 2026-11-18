@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""素材池：配额轮转 + dHash 感知去重 + 静止画面过滤 + 三级降级。"""
+"""Media pool: quota rotation, perceptual de-duplication with dHash, still
+frame filtering, and a three-stage relaxation."""
 import os
 import random
 
@@ -25,7 +26,8 @@ class Pool(object):
         self.dark = {}
         self.count = {f: 0 for f in self.files}
         self.rng = random.Random(seed)
-        # prepare 生成的索引带整段亮度采样，直接复用，不必每次重开 23 个视频。
+        # The index built by prepare already carries brightness samples for the
+        # whole clip, so there is no need to reopen every video each time.
         idx = assets.load_index(cfg).get("videos") or {}
         for f in self.files:
             rec = idx.get(f)
@@ -41,7 +43,8 @@ class Pool(object):
             self.dark[f] = False
 
     def _probe(self, fn, pos):
-        """一次读取拿全部判据：整体亮度、中心亮度、运动量、dHash。"""
+        """One read gets every criterion: overall brightness, centre brightness,
+        motion amount, dHash."""
         c = self.caps.get(fn)
         if c is None:
             c = cv2.VideoCapture(os.path.join(self.dir, fn))
@@ -77,22 +80,24 @@ class Pool(object):
         return False
 
     def take(self, need):
-        """严格条件找不到就逐级放宽，不直接抛错。"""
+        """Relax the criteria step by step instead of raising an error."""
         for relax in (0, 1, 2):
             dth, mot_t = ((self.dhash_th, self.motion_min),
                           (self.dhash_th + 4, self.motion_min * 0.6),
                           (12, 0.0))[relax]
             order = [f for f in sorted(self.files, key=lambda f: self.count[f])
                      if self.count[f] < self.quota]
-            # 配额用满后按总时长降序回落，长素材放最后
+            # Once the quota is exhausted, fall back to longest clips last
             order += sorted((f for f in self.files if f not in order),
                             key=lambda f: -self.cap.get(f, 0))
             for fn in order:
                 dur = self.cap.get(fn, 0.0)
                 if dur < need + .25:
                     continue
-                # 整段有黑场的素材在严格轮次里直接跳过，降级轮次才允许，
-                # 这是 v30 Pool.has_dark() 的索引版，用来压住 dark_pct。
+                # Clips with a dark span are skipped in the strict round and
+                # only allowed in the relaxed ones. This is the indexed
+                # version of the reference implementation's Pool.has_dark(),
+                # and it is what keeps dark_pct under control.
                 if relax == 0 and self.dark.get(fn):
                     continue
                 for _ in range(40):
@@ -112,7 +117,8 @@ class Pool(object):
         raise RuntimeError("pool exhausted: no usable source under %s" % self.dir)
 
     def repeat_ratio(self):
-        """同一素材被复用的时长占比，用来量化「看着重复」。"""
+        """Share of the runtime taken up by reused footage, which quantifies
+        how repetitive the result looks."""
         if not self.used:
             return 0.0
         by_file = {}

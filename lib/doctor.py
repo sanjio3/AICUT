@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""ffmpeg 能力矩阵。实测结果进渲染缓存哈希，换机器/换版本时缓存自动失效。"""
+"""ffmpeg capability matrix. The measured result feeds the render cache hash,
+so the cache invalidates automatically on a different machine or version."""
 import hashlib
 import json
 import re
@@ -12,14 +13,17 @@ WATCHED = [
     "vstack", "zoompan", "colorbalance", "geq", "fps", "crop",
 ]
 
-# 版本相关的行为限制，无法从 -filters 列表推断，只能靠实测记录。
-# 来源：v30 在本机 2018 构建上的逐条验证。
+# Version specific behaviour limits. These cannot be inferred from the
+# -filters list, they can only come from actually running the filter.
+# Source: item by item verification on the 2018 build used during development.
 BEHAVIOR_NOTES = {
-    "overlay_format": "2018 构建无 format 选项",
-    "gblur_sigma": "只收常量 sigma，不接受表达式",
-    "rgbashift_c": "无 c 参数，只有 rh/rv/gh/gv/bh/bv/ah/av/edge",
-    "blend_screen": "all_mode=screen 会连 U/V 抬高造成整幅染紫，须用逐平面 c0/c1/c2 表达式",
-    "zoompan_dup": "zoompan 会产生相同帧，推镜改用 scale+crop 表达式",
+    "overlay_format": "the 2018 build has no format option",
+    "gblur_sigma": "only accepts a constant sigma, not an expression",
+    "rgbashift_c": "no c parameter, only rh/rv/gh/gv/bh/bv/ah/av/edge",
+    "blend_screen": "all_mode=screen raises the U/V planes too and tints the "
+                     "whole frame purple; use per-plane c0/c1/c2 expressions",
+    "zoompan_dup": "zoompan produces duplicate frames; use a scale+crop "
+                   "expression for the push instead",
 }
 
 
@@ -46,7 +50,8 @@ def probe(ffmpeg):
 
 
 def caps_hash(caps):
-    """只用版本与 filter 有无做哈希，路径不进哈希（换路径不应失效）。"""
+    """Hash only the version and the presence of filters. Paths stay out of
+    the hash, since moving them should not invalidate anything."""
     payload = {"version": caps.get("version", ""),
                "filters": caps.get("filters", {})}
     blob = json.dumps(payload, sort_keys=True, ensure_ascii=False)

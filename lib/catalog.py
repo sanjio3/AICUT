@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
-"""扫描 skills/ 下的标准 skill，汇总成便于查看与调试的清单。
+"""Scan the standard skills under skills/ and summarise them for viewing and
+debugging.
 
-**真正的路由由宿主 Agent 完成**：宿主读取每个 skill 的 `description`（何时使用），
-按用户原话做语义判断，命中后直接加载对应 SKILL.md。这里的 `triggers` 字段只是
-可选的加速索引与调试辅助，不再是运行时唯一依据；缺 triggers 时从 description
-抽取关键词兜底，保证新 skill 不写 triggers 也能被发现。
+**Routing is done by the host agent.** The host reads each skill's
+`description` (when to use it), judges the user's wording semantically and
+loads the matching SKILL.md. The `triggers` field here is only an optional
+accelerator and a debugging aid, no longer the single source of runtime
+routing. When triggers are missing, keywords are derived from the description
+so a new skill is still discoverable without them.
 """
 import io
 import os
@@ -30,7 +33,7 @@ def parse_front(path):
 
 
 def _derive_triggers(meta):
-    """没有 triggers 字段时，从 description 里抽中文关键词兜底。"""
+    """Derive fallback keywords from the description when triggers are absent."""
     explicit = [str(x).strip() for x in (meta.get("triggers") or []) if str(x).strip()]
     if explicit:
         return explicit
@@ -73,7 +76,7 @@ def scan(root=ROOT):
 
 
 def routes(root=ROOT):
-    """触发词（小写）到 skill 名的映射，并返回重复触发词的冲突列表。"""
+    """Map trigger words (lower case) to skill names, and report duplicates."""
     table, conflicts = {}, []
     for name, meta in scan(root).items():
         for t in meta["triggers"]:
@@ -88,7 +91,8 @@ def routes(root=ROOT):
 
 
 def lookup(words, root=ROOT):
-    """用户原话里出现的触发词 -> 命中的 skill 名，保序去重。仅供调试参考。"""
+    """Trigger words found in the user's wording to the matching skill names,
+    order preserving and deduplicated. For debugging reference only."""
     table, _ = routes(root)
     low = (words or "").lower()
     hits = []

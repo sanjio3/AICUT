@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""ffmpeg 调用面：${ENV:-default} 展开、超时重试、编码封装。"""
+"""ffmpeg invocation layer: ${ENV:-default} expansion, timeout retry, encoding."""
 import io
 import os
 import re
@@ -9,8 +9,9 @@ ENV_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}")
 
 
 def load_dotenv(cfg_path):
-    """轻量读取与配置文件同目录的 .env，不引入 python-dotenv。
-    已存在的进程环境变量优先，CI 注入的值不会被本机文件覆盖。"""
+    """Read a .env file next to the config without pulling in python-dotenv.
+    Environment variables that already exist win, so CI-injected values are
+    never overridden by a local file."""
     path = os.path.join(os.path.dirname(os.path.abspath(cfg_path)), ".env")
     if not os.path.exists(path):
         return
@@ -57,7 +58,8 @@ def load_config(path="params.yaml"):
 
 
 def run(cmd, timeout=300, tries=2, cwd=None):
-    """前台执行，超时重试。失败时把 ffmpeg 尾部错误抛出来，不静默吞掉。"""
+    """Run in the foreground with retries. On failure the tail of the ffmpeg
+    error is raised instead of being swallowed."""
     last = "unknown"
     for _ in range(tries):
         try:
@@ -75,7 +77,8 @@ def run(cmd, timeout=300, tries=2, cwd=None):
 
 
 def encode(ffmpeg, inputs, fc, out, dur, cfg):
-    """逐镜统一出口。-t 限时保证片段长度严格等于 plan 给的 dur。"""
+    """Uniform per-shot output. -t guarantees the clip length equals the
+    duration the plan asked for."""
     pr = cfg["project"]
     cmd = [ffmpeg, "-y", "-v", "error"] + [str(x) for x in inputs]
     cmd += ["-filter_complex", fc, "-map", "[out]",

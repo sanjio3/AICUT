@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""双层加权模糊。纯函数，不落盘、不启进程。"""
+"""Double weighted blur. A pure function: no disk writes, no processes."""
 from typing import Any, Dict, List, Tuple
 
 

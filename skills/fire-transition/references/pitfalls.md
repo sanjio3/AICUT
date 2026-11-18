@@ -1,32 +1,32 @@
-# 火焰转场 · 参数与踩坑
+# Fire transition — parameters and pitfalls
 
-## 参数表
+## Parameter table
 
-| 旋钮 | 默认 | 范围 | 影响指标 | 副作用 |
+| Knob | Default | Range | Affected metrics | Side effect |
 |---|---|---|---|---|
-| `clip` | fire01 | fire01 / fire02 | shape | 在 prepare 自动发现的火焰类叠加素材里选第几个 |
-| `trim_start` | 0.55 | 0–1.50（步长 0.05） | dark_pct | 从火焰素材哪一秒起播，太早取到黑场 |
-| `base_dim` | 0.68 | 0.40–1.00（步长 0.02） | V, dark_pct | 底图压暗系数，不压暗就读不出火焰 |
-| `flame_gain` | 1.95 | 0.80–2.60（步长 0.05） | bright_pct | 超过 2.4 容易过曝 |
-| `chroma_mix` | 0.28 | 0–1（步长 0.02） | V | 只改 U/V 平面，不改亮度 |
-| `beat_align` | true | 布尔 | cut_rate | 由 `lib/plan.py` 消费，决定切点是否吸附拍点 |
-| `hue` | 6.0 | 锁定 | — | 火焰画面做色相旋转会把橙红染紫 |
+| `clip` | fire01 | fire01 / fire02 | shape | Which of the fire overlays discovered by prepare to use |
+| `trim_start` | 0.55 | 0–1.50 (step 0.05) | dark_pct | Where in the clip to start; too early lands on black frames |
+| `base_dim` | 0.68 | 0.40–1.00 (step 0.02) | V, dark_pct | How much the base plate is dimmed; without it the flame does not read |
+| `flame_gain` | 1.95 | 0.80–2.60 (step 0.05) | bright_pct | Above 2.4 it blows out easily |
+| `chroma_mix` | 0.28 | 0–1 (step 0.02) | V | Share of the flame in the chroma planes; U/V only, no brightness change |
+| `beat_align` | true | boolean | cut_rate | Consumed by `lib/plan.py`; decides whether cuts snap to beats |
+| `hue` | 6.0 | locked | — | Rotating hue turns orange into purple, which stops reading as fire |
 
-## 验收阈值
+## Acceptance thresholds
 
-- `bright_pct < 8%`：火焰增益过高会先在这里爆。
-- `dark_pct < 2%`：`base_dim` 压太狠或 `trim_start` 取到黑场会在这里爆。
-- `V` 落在 100–160：整体亮度；
-- `laplacian_var` 用作清晰度参考，火焰叠上去后略升属正常。
+- `bright_pct < 8%`: the flame gain blows out here first.
+- `dark_pct < 2%`: triggered when `base_dim` dims too hard or `trim_start` lands on black frames.
+- `V` between 100 and 160: overall brightness.
+- `laplacian_var` as a sharpness reference; a slight rise after the flame is blended in is normal.
 
-## 已知坑
+## Known pitfalls
 
-- `blend all_mode=screen` 会连 U/V 一起抬高，整幅染色；必须写逐平面 `c0_expr`（亮度）与 `c1_expr`/`c2_expr`（色度）。
-- 火焰镜头不要做色相旋转，橙红会被染成紫色，看起来不像火。
-- 火焰 mov 往往短于镜头时长，必须 `-stream_loop -1` 兜底，否则尾帧定格。
-- `trim_start=0.55` 是 v30 在具体素材上实测的可用起点，换素材要重测。
-- 2018 版 ffmpeg 的 `overlay` 无 `format` 选项、`gblur` 只收常量，这些限制在 `lib/doctor.py`，不要凭记忆判断。
+- `blend all_mode=screen` raises the U/V planes as well and tints the whole frame; use per-plane `c0_expr` for luma and `c1_expr`/`c2_expr` for chroma.
+- Do not rotate hue on fire shots, orange turns purple and stops reading as fire.
+- Flame clips are often shorter than the shot, so `-stream_loop -1` is needed as a fallback, otherwise the last frame freezes.
+- `trim_start=0.55` is the working start measured on the reference material; re-measure when the clip changes.
+- The 2018 ffmpeg build has no `format` option on `overlay` and `gblur` only accepts a constant. Those limits live in `lib/doctor.py`, do not judge from memory.
 
-## 当前实现边界
+## Current implementation boundary
 
-逐平面叠加、素材轮替、参数化完整；v30 的 HUD 扫描光带、霓虹网格叠加、不规则蒙版尚未迁移。缺 overlays 素材时 `scripts/build.py` 自动降级成轻度提亮，链路不中断但效果明显变弱。
+Per-plane blending, clip rotation and full parameterisation. The HUD scan band, neon grid overlay and irregular mask from the reference cut are not migrated. When overlay material is missing, `scripts/build.py` degrades to a mild brightening: the pipeline keeps working but the effect is clearly weaker.

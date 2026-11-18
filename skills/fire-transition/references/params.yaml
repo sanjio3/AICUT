@@ -1,42 +1,43 @@
-# fire-transition 局部默认值。与全局 params.yaml 同名的组会合并，局部优先。
+# fire-transition local defaults. Groups with the same name in the global
+# params.yaml are merged, and the local value wins.
 clip:
   default: fire01
   values: [fire01, fire02]
   affects: [shape]
-  note: "在 prepare 自动发现的火焰类叠加素材里选第几个，决定火焰形状"
+  note: "Which of the fire overlays discovered by prepare to use; decides the flame shape"
 trim_start:
   default: 0.55
   min: 0
   max: 1.50
   step: 0.05
   affects: [dark_pct]
-  note: "从火焰素材哪一秒起播。太早是黑场，0.55 是 v30 实测起点"
+  note: "Where in the flame clip to start. Too early lands on black frames; 0.55 is the measured working start"
 base_dim:
   default: 0.68
   min: 0.40
   max: 1.00
   step: 0.02
   affects: [V, dark_pct]
-  note: "底图压暗系数，不压暗就读不出火焰"
+  note: "How much the base plate is dimmed; without dimming the flame does not read"
 flame_gain:
   default: 1.95
   min: 0.80
   max: 2.60
   step: 0.05
   affects: [bright_pct]
-  note: "火焰亮度增益，超过 2.4 容易过曝"
+  note: "Flame brightness gain; above 2.4 it blows out easily"
 chroma_mix:
   default: 0.28
   min: 0
   max: 1
   step: 0.02
   affects: [V]
-  note: "色度平面里火焰占的比例，只改 U/V 不改亮度"
+  note: "Share of the flame in the chroma planes; changes U/V only, not brightness"
 beat_align:
   default: true
   affects: [cut_rate]
-  note: "由 lib/plan.py 消费，决定切点是否吸附到最近拍点"
+  note: "Consumed by lib/plan.py; decides whether cuts snap to the nearest beat"
 hue:
   default: 6.0
   locked: true
-  note: "锁定。火焰镜头做色相旋转会把橙红染成紫色看不出是火"
+  note: "Locked. Rotating hue on fire shots turns orange into purple, which stops reading as fire"

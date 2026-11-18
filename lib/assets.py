@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
-"""素材自行预处理：一次性扫描视频、发现叠加素材、分析 BGM，全部落盘到 runs/_cache/。
+"""Automatic media preprocessing: scan videos, discover overlay material and
+analyse the background music in one pass, all written to runs/_cache/.
 
-prepare 之后 plan 不再需要 AICUT_MUSIC_JSON，也不必每次重新打开 23 个视频读元数据。
+After prepare, plan no longer needs AICUT_MUSIC_JSON and does not reopen every
+video just to read metadata.
 """
 import io
 import json
@@ -10,7 +12,7 @@ import os
 import cv2
 import numpy as np
 
-from . import beat
+from . import beat, demo_assets
 
 VIDEO_EXT = (".mp4", ".mov", ".mkv", ".avi")
 OVERLAY_EXT = (".mov", ".mp4", ".png", ".jpg", ".webm")
@@ -43,7 +45,8 @@ def load_index(cfg):
 
 
 def _probe_video(path, samples=7):
-    """一次打开，按 7 个采样点读整段亮度，标记中途黑场。"""
+    """Open once and read the brightness of the whole clip from 7 sample
+    points, flagging dark spans in the middle."""
     c = cv2.VideoCapture(path)
     fps = c.get(cv2.CAP_PROP_FPS) or 24.0
     n = c.get(cv2.CAP_PROP_FRAME_COUNT) or 0.0
@@ -90,13 +93,16 @@ def _overlays(cfg):
         return out
     files = sorted(f for f in os.listdir(d) if f.lower().endswith(OVERLAY_EXT))
     out["all"] = files
+    # The Chinese keyword is deliberate: users on a Chinese system often name
+    # their fire overlays "火焰". Both scripts are accepted.
     out["fire"] = [f for f in files
                    if ("火焰" in f or "fire" in f.lower() or "burn" in f.lower())]
     return out
 
 
 def _analyse_bgm(cfg):
-    """只分析成片附近的一段音频，再把相对时间平移回 BGM 绝对时间。"""
+    """Only analyse the audio window near the finished cut, then shift the
+    relative times back to absolute BGM time."""
     bgm = cfg["paths"]["bgm"]
     if not os.path.exists(bgm):
         return {"source": "missing bgm -> equal-tempered fallback"}
@@ -126,6 +132,15 @@ def _analyse_bgm(cfg):
 def prepare(cfg):
     d = cache_dir(cfg)
     videos = _videos(cfg)
+    demo_fallback = False
+    if not videos:
+        # A fresh clone has no media. Rather than failing with an empty pool,
+        # generate synthetic demo clips so the user can see a result right
+        # away. Their own clips always take priority.
+        made, demo_fallback = demo_assets.ensure(
+            cfg["paths"]["videos"], ffmpeg=cfg["paths"].get("ffmpeg"))
+        if made:
+            videos = _videos(cfg)
     overlays = _overlays(cfg)
     music = _analyse_bgm(cfg)
     doc = {
@@ -135,6 +150,7 @@ def prepare(cfg):
         "videos": videos,
         "overlays": overlays,
         "music": music,
+        "demo_fallback": demo_fallback,
     }
     with io.open(os.path.join(d, "assets.json"), "w", encoding="utf-8") as fh:
         fh.write(json.dumps(doc, ensure_ascii=False, indent=2))

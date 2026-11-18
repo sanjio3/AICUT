@@ -1,16 +1,17 @@
-# ending-dissolve 局部默认值。gblur_sigma 与 dissolve_frames 定义在全局 params.yaml 的同名组里，
-# 这里补充的两个键会与全局组合并，不会覆盖。
+# ending-dissolve local defaults. gblur_sigma and dissolve_frames are defined
+# in the same groups of the global params.yaml; the two keys below merge with
+# the global groups and do not override them.
 gamma:
   default: 0.68
   min: 0.40
   max: 1.00
   step: 0.02
   affects: [V, dark_pct]
-  note: "压暗系数，v30 用户要求「压暗 1.5 倍」后取 0.68"
+  note: "Dimming factor; 0.68 is what came out of the reference request to dim by 1.5x"
 mix:
   default: 0.28
   min: 0
   max: 0.60
   step: 0.02
   affects: [motion_p90, laplacian_var]
-  note: "第二层模糊在混合里占的比例，越高越糊"
+  note: "Share of the second blur layer in the blend; the higher it is the softer the result"

@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-"""零依赖冒烟测试：python tests/smoke.py
+"""Zero-dependency smoke test: python tests/smoke.py
 
-本机与 CI 都无需 pytest、无需素材、无需 ffmpeg，只验证框架契约没被改坏。
-同学提交前跑它；负责人改动 lib/ 后也必须跑它。
+Needs neither pytest, nor media, nor ffmpeg on the host or in CI. It only
+verifies that the framework contracts are intact.
+Run it before submitting a pull request; whoever changes lib/ must run it too.
 """
 import os
 import py_compile
@@ -101,11 +102,64 @@ def main():
         ok = len(skills) >= 3 and all(n.startswith("aicut-") for n in names)
         return ok, ", ".join(names)
 
+    def c_package():
+        import re
+        import tempfile
+        import zipfile
+
+        import yaml
+        from lib import package as pm
+        tmp = tempfile.mkdtemp(prefix="aicut_pkg_")
+        try:
+            results = pm.build_all(tmp)
+            if not results:
+                return False, "no skills packaged"
+            bad = []
+            for name, path, problems in results:
+                if path is None:
+                    bad.append("%s:%s" % (name, "; ".join(problems)))
+                    continue
+                if problems:
+                    bad.append("%s:%s" % (name, "; ".join(problems)))
+                    continue
+                with zipfile.ZipFile(path) as zf:
+                    names = zf.namelist()
+                    if "SKILL.md" not in names:
+                        bad.append("%s:SKILL.md not at root" % name)
+                        continue
+                    txt = zf.read("SKILL.md").decode("utf-8")
+                    m = re.match(r"\A---\s*\n(.*?)\n---\s*\n", txt, re.S)
+                    if not m:
+                        bad.append("%s:no frontmatter" % name)
+                        continue
+                    meta = yaml.safe_load(m.group(1)) or {}
+                    if not meta.get("name") or not meta.get("description"):
+                        bad.append("%s:frontmatter incomplete" % name)
+            return (not bad, "; ".join(bad) or
+                    "%d skills packaged" % len(results))
+        finally:
+            import shutil
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def c_confirm():
+        from lib import confirm as cm
+        plan = {"project": {"duration": 2.0},
+                "shots": [{"effect": "base", "dur": 0.5}],
+                "beat_frames": [1, 2], "repeat_ratio": 0.1}
+        h1 = cm.plan_hash(plan)
+        plan2 = dict(plan)
+        plan2["shots"] = [{"effect": "base", "dur": 0.9}]
+        h2 = cm.plan_hash(plan2)
+        ok = h1 != h2 and len(h1) == 16
+        return ok, "%s vs %s" % (h1, h2)
+
     check("catalog scans skills without trigger conflicts", c_catalog)
     check("user phrase maps to the right effects", c_lookup)
     check("all built-in skills pass validate-effect", c_validate)
     check("each skill follows the standard layout", c_structure)
     check("installer discovers named skills", c_install)
+    check("every skill packages into a valid archive", c_package)
+    check("plan hash changes when the plan changes", c_confirm)
     check("selection.effects really restricts the rotation", c_selection)
     check("parameter override wins over local defaults", c_merge)
     check("python sources compile", c_compile)

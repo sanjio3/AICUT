@@ -1,25 +1,37 @@
-## 这次改了什么
+## What this changes
 
-一句话说明效果变化，并附上对应的 issue 编号。
+One sentence about what changed, with the related issue number.
 
-## 提交前自检
+## Checklist before submitting
 
-- [ ] `python aicut.py validate-effect <name>` 全部 PASS
-- [ ] `python aicut.py catalog` 无 CONFLICTS，新特效可被检索到
-- [ ] `python aicut.py install --dry-run` 能看到它
-- [ ] `python tests/smoke.py` 通过
-- [ ] `python -m compileall -q .` 无语法错误
-- [ ] 只改了 `skills/<name>/`；若改了 `lib/`、`SKILL.md` 或 `params.yaml`，在下面说明原因并 @负责人
-- [ ] SKILL.md 四段（渲染前回传参数表 / 验收 / 已知坑 / 当前实现边界）齐全，实测指标已填进「验收」
-- [ ] `references/params.yaml` 每个键都有 `default`，有 `min/max` 就有 `step`，`note` 写了副作用
-- [ ] `references/pitfalls.md` 已填，没留 TODO
-- [ ] SKILL.md frontmatter 有 `name` / `description` / `version` / `agent_created: true`
-- [ ] 没有提交素材、成片、`.env`、`__pycache__` 或 `runs/` 下的产物
-- [ ] 若引入新依赖或第三方代码，同步更新了 `requirements.txt`、`pyproject.toml`、`NOTICE`
+- [ ] `python aicut.py validate-effect <name>` reports PASS
+- [ ] `python aicut.py catalog` has no CONFLICTS and the new effect is listed
+- [ ] `python aicut.py install --dry-run` shows it
+- [ ] `python aicut.py package --effect <name>` produces a valid archive
+- [ ] `python tests/smoke.py` passes
+- [ ] `python -m compileall -q .` reports no syntax errors
+- [ ] Only files under `skills/<name>/` changed. If `lib/`, `SKILL.md` or
+      `params.yaml` had to change, explain why below and tag the maintainer
+- [ ] SKILL.md has the four required sections (Parameter table to report before
+      rendering / Acceptance / Known pitfalls / Current implementation
+      boundary), with the measured numbers filled into "Acceptance"
+- [ ] Every key in `references/params.yaml` has a `default`, has a `step`
+      whenever it has `min`/`max`, and its `note` describes the side effect
+- [ ] `references/pitfalls.md` is filled in and no TODO is left
+- [ ] The SKILL.md frontmatter has `name`, `description`, `version` and
+      `agent_created: true`
+- [ ] The description says when to use the skill in the third person, and the
+      trigger phrases cover both English and Chinese
+- [ ] No media, rendered output, `.env`, `__pycache__` or anything under
+      `runs/` was committed
+- [ ] If a dependency or third-party code was added, `requirements.txt`,
+      `pyproject.toml` and `NOTICE` were updated accordingly
 
-## 实测
+## Measurements
 
-把 `qa.json` 的关键数字贴在这里（至少 V、dark_pct、dup_pct、cut_rate），并说明和改动前比是变好还是变差。gate 报 WARN 不要藏着，写清楚原因。
+Paste the key numbers from `qa.json` (at least V, dark_pct, dup_pct and
+cut_rate) and say whether they got better or worse than before the change.
+Do not hide a WARN from the gate; explain it.
 
-- 效果抽帧图（贴文件或路径）：
-- 已知还没做到的部分：
+- A pulled frame of the result (attach the file or give the path):
+- What is still not implemented:

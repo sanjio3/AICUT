@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""规则四格分屏。纯函数，不落盘、不启进程。"""
+"""Regular four-panel split. A pure function: no disk writes, no processes."""
 from typing import Any, Dict, List, Tuple
 
 
@@ -14,8 +14,10 @@ def build(shot: Dict[str, Any], params: Dict[str, Any],
 
     lines = [
         "[g]split=4[a][b][c][d]",
-        # 四格各取略有错位的区域，再画十字分格线；若按原象限裁切后拼回原位，
-        # 几何上完全还原，只剩色调差异，肉眼看不出是分屏。
+        # Each panel takes a slightly offset region, then cross dividers are
+        # drawn. Cropping the original quadrants and putting them back in place
+        # would restore the geometry exactly, leaving only a colour difference
+        # that the eye cannot read as a split.
         "[a]crop=%d:%d:0:0,eq=contrast=%.2f:saturation=%.2f[a1]"
         % (cw, ch, contrast, mono),
         "[b]crop=%d:%d:%d:0,eq=contrast=%.2f:saturation=%.2f[b1]"

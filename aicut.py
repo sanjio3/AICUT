@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
-"""AICUT 薄编排入口。宿主 Agent 用 Bash 直接调用，不启动服务、无常驻进程。"""
+"""AICUT thin orchestration entry point.
+
+The host agent invokes this directly through Bash. Nothing starts a service,
+opens a port or keeps a process alive. All user-visible output is in English;
+Chinese is used only for the runtime mapping of Chinese user speech to
+parameters, which lives in params.yaml rather than in code.
+"""
 import argparse
 import datetime
 import io
@@ -15,8 +21,9 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from lib import (assets, catalog, doctor, ff, music, plan as planmod,  # noqa: E402
-                 pool as poolmod, qa, render, validate)
+from lib import (assets, catalog, confirm as confirmmod, doctor, ff, music,  # noqa: E402
+                 package as packagemod, plan as planmod, pool as poolmod, qa,
+                 render, validate)
 from lib import install as installmod  # noqa: E402
 
 
@@ -57,8 +64,8 @@ def new_id():
 
 
 def run_dir(cfg, rid):
-    # 必须规范化：路径里残留 "\./" 会让旧版 ffmpeg 的 concat demuxer
-    # 把相对 file 条目解析到错误的基准目录。
+    # Must be normalised: a leftover "\./" in the path makes the old ffmpeg
+    # concat demuxer resolve relative file entries against the wrong base.
     d = os.path.abspath(os.path.normpath(
         os.path.join(ROOT, cfg["paths"]["runs"], rid)))
     os.makedirs(d, exist_ok=True)
@@ -106,12 +113,12 @@ def cmd_new_effect(args):
         with io.open(p, "w", encoding="utf-8") as fh:
             fh.write(text.replace("<NAME>", name))
     print("created: skills/%s/" % name)
-    print("  SKILL.md                    frontmatter + 何时使用 + 四段必写章节")
-    print("  scripts/build.py            build() 纯函数")
-    print("  references/params.yaml      可调旋钮")
-    print("  references/pitfalls.md      参数表 / 验收阈值 / 已知坑 / 实现边界")
+    print("  SKILL.md                    frontmatter, when to use, required sections")
+    print("  scripts/build.py            build() pure function")
+    print("  references/params.yaml      tunable knobs")
+    print("  references/pitfalls.md      parameters, thresholds, pitfalls, boundaries")
     print("next:")
-    print("  1. fill in SKILL.md triggers and the four sections")
+    print("  1. fill in SKILL.md triggers and the four required sections")
     print("  2. python aicut.py validate-effect %s" % name)
     print("  3. python aicut.py catalog  (confirm it is discoverable)")
     print("  4. python aicut.py install --dry-run  (see where it would go)")
@@ -138,6 +145,8 @@ def cmd_prepare(args):
           (len(vids), len(dark)))
     if dark:
         print("  dark   : %s" % ", ".join(dark[:6]))
+    if doc.get("demo_fallback"):
+        print("  note   : no media found, generated synthetic demo clips")
     print("overlays : %d found, %d classified as fire" %
           (len(ovs.get("all", [])), len(ovs.get("fire", []))))
     print("music    : %s" % doc["music"])
@@ -204,11 +213,13 @@ def cmd_plan(args):
     pl = planmod.build(cfg, grid, p, overrides=ov, duration=args.duration,
                        effects=sel.get("effects"))
     p.close()
-    write_json(os.path.join(d, "plan.json"), pl)
+    plan_path = os.path.join(d, "plan.json")
+    pl = confirmmod.write_plan(plan_path, pl, cfg)
 
     counts = {}
     for sh in pl["shots"]:
         counts[sh["effect"]] = counts.get(sh["effect"], 0) + 1
+    blk = pl.get("confirmation") or {}
     print("run      : %s" % rid)
     print("shots    : %d  duration=%.2fs  beats=%d" %
           (len(pl["shots"]), pl["project"]["duration"], len(pl["beat_frames"])))
@@ -217,16 +228,45 @@ def cmd_plan(args):
     print("overrides: %s" % (ov or "none"))
     print("repeat   : %.4f" % pl["repeat_ratio"])
     print("plan     : %s" % os.path.join(d, "plan.json"))
+    print("")
+    print("NOT CONFIRMED YET. Ask the user these questions before rendering:")
+    for i, q in enumerate(blk.get("questions") or [], 1):
+        print("  %d. %s" % (i, q))
+    print("")
+    print("plan hash: %s" % blk.get("plan_hash"))
+    print("after the user answers, run:")
+    print("  python aicut.py confirm --run %s --hash %s"
+          % (rid, blk.get("plan_hash")))
+    print("then:")
+    print("  python aicut.py render --run %s" % rid)
+
+
+def cmd_confirm(args):
+    cfg = config()
+    d = run_dir(cfg, args.run)
+    pf = os.path.join(d, "plan.json")
+    if not os.path.exists(pf):
+        raise SystemExit("plan.json missing: %s" % pf)
+    blk = confirmmod.confirm(pf, args.hash, note=args.note)
+    print("confirmed: %s" % blk.get("confirmed_at"))
+    print("hash     : %s" % blk.get("confirmed_hash"))
+    if args.note:
+        print("note     : %s" % args.note)
+    print("you can now run:")
+    print("  python aicut.py render --run %s" % args.run)
 
 
 def cmd_render(args):
     cfg = config()
     d = run_dir(cfg, args.run)
     pf = os.path.join(d, "plan.json")
-    if not os.path.exists(pf):
-        raise SystemExit("plan.json missing, run plan first: %s" % pf)
-    with io.open(pf, "r", encoding="utf-8") as fh:
-        pl = json.load(fh)
+    ok, pl, msg = confirmmod.check(pf)
+    if not ok:
+        raise SystemExit(
+            "render refused: %s\n"
+            "AICUT does not render without a user-confirmed plan. Put the "
+            "questions above to the user, wait for the answer, then run "
+            "`aicut.py confirm` and retry." % msg)
     caps = doctor.probe(cfg["paths"]["ffmpeg"])
     files, cached = render.render_all(pl, cfg, caps, d)
     out = render.finish(files, pl, cfg, d)
@@ -289,6 +329,35 @@ def cmd_install(args):
         raise SystemExit(rc)
 
 
+def cmd_package(args):
+    cfg = config()
+    out = args.out or os.path.join(ROOT, "dist")
+    if args.effect:
+        path, problems = packagemod.build(args.effect, out, force=args.force)
+        if path is None:
+            for p in problems:
+                print("ERROR   %s" % p)
+            raise SystemExit(1)
+        for p in problems:
+            print("WARN    %s" % p)
+        print("package : %s" % path)
+        print("size    : %d bytes" % os.path.getsize(path))
+        return
+    results = packagemod.build_all(out, force=args.force)
+    if not results:
+        print("no skills found under %s" % packagemod.SRC)
+        return
+    print("output  : %s" % out)
+    for name, path, problems in results:
+        if path is None:
+            print("FAILED  %-22s %s" % (name, "; ".join(problems)))
+        else:
+            print("OK      %-22s %s (%d bytes)" %
+                  (name, path, os.path.getsize(path)))
+            for p in problems:
+                print("        WARN  %s" % p)
+
+
 def main():
     ap = argparse.ArgumentParser(prog="aicut")
     sub = ap.add_subparsers(dest="action")
@@ -323,6 +392,13 @@ def main():
     p = sub.add_parser("render")
     p.add_argument("--run", required=True)
 
+    p = sub.add_parser("confirm")
+    p.add_argument("--run", required=True)
+    p.add_argument("--hash", default=None,
+                   help="plan hash printed by `plan` (optional but safer)")
+    p.add_argument("--note", default=None,
+                   help="what the user decided, stored with the confirmation")
+
     p = sub.add_parser("qa")
     p.add_argument("--run", required=True)
 
@@ -339,6 +415,13 @@ def main():
     p.add_argument("--force", action="store_true")
     p.add_argument("--dry-run", action="store_true")
 
+    p = sub.add_parser("package")
+    p.add_argument("--effect", default=None,
+                   help="package one skill; omit to package all of them")
+    p.add_argument("--out", default=None, help="output directory (default ./dist)")
+    p.add_argument("--force", action="store_true",
+                   help="package even when the contract check reports problems")
+
     args = ap.parse_args()
     handlers = {"doctor": cmd_doctor, "prepare": cmd_prepare,
                 "catalog": cmd_catalog, "new-effect": cmd_new_effect,
@@ -346,7 +429,8 @@ def main():
                 "params": cmd_params,
                 "attribute": cmd_attribute, "plan": cmd_plan,
                 "render": cmd_render, "qa": cmd_qa, "diff": cmd_diff,
-                "install": cmd_install}
+                "confirm": cmd_confirm,
+                "install": cmd_install, "package": cmd_package}
     if not args.action:
         ap.print_help()
         return

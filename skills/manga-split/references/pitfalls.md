@@ -1,29 +1,29 @@
-# 漫画分格 · 参数与踩坑
+# Comic panel split — parameters and pitfalls
 
-## 参数表
+## Parameter table
 
-| 旋钮 | 默认 | 范围 | 影响指标 | 副作用 |
+| Knob | Default | Range | Affected metrics | Side effect |
 |---|---|---|---|---|
-| `cells` | 4 | 锁定 | — | 当前实现固定四格 |
-| `mono_sat` | 0.05 | 0–1（步长 0.05） | V, laplacian_var | 黑白格的饱和度，越低越接近纯黑白 |
-| `color_sat` | 1.40 | 0.5–2.5（步长 0.05） | V | 彩色格饱和度，与黑白格形成对比 |
-| `contrast` | 1.25 | 0.9–2.0（步长 0.02） | V, dark_pct | 四格统一的对比度 |
-| `beat_align` | true | 布尔 | cut_rate | 由 `lib/plan.py` 消费 |
+| `cells` | 4 | locked | — | The implementation is fixed at four panels |
+| `mono_sat` | 0.05 | 0–1 (step 0.05) | V, laplacian_var | Saturation of the black and white panels; the lower it is the more comic the frame reads |
+| `color_sat` | 1.40 | 0.5–2.5 (step 0.05) | V | Saturation of the colour panels; one colour and one monochrome pair creates the contrast |
+| `contrast` | 1.25 | 0.9–2.0 (step 0.02) | V, dark_pct | Contrast shared by all four panels |
+| `beat_align` | true | boolean | cut_rate | Consumed by `lib/plan.py` |
 
-## 验收阈值
+## Acceptance thresholds
 
-- `dark_pct < 2%`：黑白格降饱和后整体偏暗，或对比度拉太高会在这里爆。
-- `V` 稳定在 100–160：双色对比不应让整体亮度剧幅漂移。
-- `laplacian_var` 因分格线与错位裁切而抬高，属预期。
-- 抽一帧目视确认十字分格线可见、四格内容不相同。
+- `dark_pct < 2%`: the desaturated panels pull the frame down, and so does a high contrast.
+- `V` stable between 100 and 160: the two-tone contrast should not swing the overall brightness much.
+- `laplacian_var` rises because of the dividers and the offset crops, which is expected.
+- Pull one frame and confirm the cross dividers are visible and the four panels do not show the same content.
 
-## 已知坑
+## Known pitfalls
 
-- `split=4` 之后四路必须各自 `crop` 到 `w//2 x h//2`，尺寸不一致会让 `hstack`/`vstack` 直接失败。
-- 错位量（这里是 48px 与 `ch-48`）不能超过半格，否则裁切越界出现黑边。
-- 如果按原象限裁切再拼回原位，几何会完全还原，只剩色调差异，肉眼看不出是分屏——必须错位。
-- `drawbox` 画十字线用 `t=fill`，线宽 4px，居中偏移 2px。
+- After `split=4` each of the four streams must be cropped to `w//2 x h//2`; mismatched sizes make `hstack`/`vstack` fail outright.
+- The offset (48px and `ch-48` here) must stay below half a panel, otherwise the crop reaches past the edge and leaves a black border.
+- Cropping the original quadrants and putting them back in place restores the geometry exactly, leaving only a colour difference the eye cannot read as a split. The offsets are mandatory.
+- The cross dividers use `drawbox` with `t=fill`, width 4px, offset by 2px to stay centred.
 
-## 当前实现边界
+## Current implementation boundary
 
-规则四格，不支持任意分格数与不规则形状。v30 的不规则斜切蒙版需要预生成蒙版序列配合 `maskedmerge`，尚未迁移，`cells` 锁死即源于此。
+Regular four panels; arbitrary panel counts and irregular shapes are not supported. The irregular slanted mask from the reference cut needs a pre-generated mask sequence combined with `maskedmerge`, which is not migrated. That is exactly why `cells` is locked.

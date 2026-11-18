@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
-"""把 skills/ 下的标准 skill 安装到宿主能扫描到的目录。
+"""Install the standard skills under skills/ into a directory the host scans.
 
-宿主只扫描 `~/.workbuddy/skills/`（用户级）与 `<workspace>/.workbuddy/skills/`
-（项目级）。仓库里的 `skills/` 是源，安装只是复制一份到扫描路径，源仍是唯一真相。
-安装时把 SKILL.md 里的 `$AICUT_ROOT` 占位替换成本仓库的绝对路径，这样宿主在
-任意 workspace 下都能定位到 `aicut.py`。
+The host only scans `~/.workbuddy/skills/` (user scope) and
+`<workspace>/.workbuddy/skills/` (project scope). The `skills/` directory in
+this repository is the source; installing is only a copy, and the source
+remains the single truth. While installing, the `$AICUT_ROOT` placeholder in
+SKILL.md is replaced with the absolute path of this repository, so the host can
+locate aicut.py from any workspace.
 """
 import argparse
 import io

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """Music structure parser: tempo, per-band onsets, beats, phrase boundaries.
 
 Why this exists: the previous rounds cut on a spectral-flux onset list built from
@@ -20,7 +21,8 @@ import sys
 
 import numpy as np
 
-FFMPEG = None       # 由 prepare 传入 cfg["paths"]["ffmpeg"]，仓库内不硬编码本机路径
+FFMPEG = None       # injected by prepare from cfg["paths"]["ffmpeg"]; no local
+                    # absolute path is hardcoded in the repository
 SR = 22050
 N_FFT = 1024
 HOP = 256

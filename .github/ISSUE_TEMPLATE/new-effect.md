@@ -1,51 +1,57 @@
 ---
-name: 新增 / 认领一个特效
-about: 收集并封装一个新的剪辑特效，交付 skills/<name>/ 标准 skill
-title: "[effect] <特效名>"
+name: New or claimed effect
+about: Collect and package a new editing effect as a standard skill under skills/<name>/
+title: "[effect] "
 labels: effect
 assignees: ''
 ---
 
-## 任务分档
+## Difficulty tier
 
-先由负责人判定档位，不要自己挑。
+The maintainer decides the tier, do not pick it yourself.
 
-- **A 档（参数档）**：只改 `references/params.yaml`、准备素材、写 `SKILL.md` 与 `references/pitfalls.md`，`scripts/build.py` 用模板里的默认实现。适合刚上手的同学。
-- **B 档（滤镜档）**：需要写 `filter_complex`，改 `scripts/build.py`。由负责人确认后再开工。
+- **Tier A (parameter tier)**: only change `references/params.yaml`, prepare
+  the material, and write `SKILL.md` and `references/pitfalls.md`.
+  `scripts/build.py` keeps the default implementation from the template.
+  Suitable for someone who has just started.
+- **Tier B (filter tier)**: requires writing a `filter_complex` chain, so
+  `scripts/build.py` changes. Confirm with the maintainer before starting.
 
-## 基本信息
+## Basic information
 
-- 特效名（小写英文加连字符，例如 `sparkle-cut`）：
-- 用户会怎么说它（列 2–5 个触发词，中英文都写）：
-- 参考片段出处与时间点（链接 / 文件名 / 秒数）：
-- 用在片子的哪个段落（开场 / 主歌 / 副歌 / 结尾 / 全片）：
+- Effect name (lowercase English with hyphens, for example `sparkle-cut`):
+- How a user would ask for it (list 2 to 5 trigger phrases, in English and in
+  Chinese):
+- Where the reference comes from (link / file name / timecode):
+- Which part of a cut it suits (opening / verse / chorus / ending / whole):
+- Whether the effect needs any overlay material:
 
-## 素材
+## Parameter draft
 
-- 需要哪类叠加素材，来源与许可是否已确认：
-- 不需要额外素材，只用画面本身（是 / 否）：
-- 素材是否已放进本机 `materials/overlays/`（仓库不收素材）：
+Run `python aicut.py new-effect <name>` to scaffold the standard skill first,
+then fill this in.
 
-## 参数草案
+- How many knobs to expose (3 to 7 is a good number, the rest go into presets):
+- The default, range and affected `qa.json` metric of each knob:
+- Any locked values, and why they are locked:
 
-先用 `python aicut.py new-effect <name>` 生成标准 skill 骨架，再填下面这几项。
+## Acceptance
 
-- 打算暴露几个旋钮（建议 3–7 个，其余进 preset）：
-- 每个旋钮的默认值、范围、影响的 `qa.json` 指标名：
-- 有没有锁定项，为什么锁定：
+- [ ] `python aicut.py validate-effect <name>` reports PASS
+- [ ] `python aicut.py catalog` shows the new effect with no CONFLICTS
+- [ ] `python aicut.py install --dry-run` lists it
+- [ ] `python aicut.py package --effect <name>` produces a valid archive
+- [ ] `python tests/smoke.py` passes
+- [ ] `plan / render / qa` was run once and the measured numbers are written
+      into the "Acceptance" section of SKILL.md
+- [ ] The "Known pitfalls" and "Current implementation boundary" sections are
+      honest, and no simplified implementation is described as a complete one
+- [ ] A screenshot or a pulled frame of the result is attached
 
-## 验收
+## Boundaries
 
-- [ ] `python aicut.py validate-effect <name>` 全部 PASS
-- [ ] `python aicut.py catalog` 能看到新特效且无 CONFLICTS
-- [ ] `python aicut.py install --dry-run` 能看到它，`install` 后宿主可扫描到
-- [ ] `python tests/smoke.py` 通过
-- [ ] 跑过一次 `plan / render / qa`，把实测指标写进 SKILL.md 的「验收」段
-- [ ] SKILL.md 的「已知坑」与「当前实现边界」如实填写，没有把简化实现说成完整实现
-- [ ] 附一张效果截图或抽帧图
+Only change files under `skills/<name>/`. Do not change `lib/`, `SKILL.md`,
+`params.yaml`, `pyproject.toml` or another contributor's skill directory. If
+the kernel really has to change, open a separate issue for the maintainer.
 
-## 边界
-
-只改 `skills/<name>/` 里的文件。不要改 `lib/`、`SKILL.md`、`params.yaml`、`pyproject.toml` 或别人的 skill 目录；确实需要改内核时，另开一个 issue 交负责人处理。
-
-认领人：
+Contributor:

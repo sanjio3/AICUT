@@ -1,28 +1,28 @@
-# 结尾溶解 · 参数与踩坑
+# Ending dissolve — parameters and pitfalls
 
-## 参数表
+## Parameter table
 
-| 旋钮 | 默认 | 范围 | 影响指标 | 副作用 |
+| Knob | Default | Range | Affected metrics | Side effect |
 |---|---|---|---|---|
-| `gblur_sigma` | 8 | 见根 params.yaml | laplacian_var | 基础模糊半径，越大越糊 |
-| `gamma` | 0.68 | 0.40–1.00（步长 0.02） | V, dark_pct | 压暗系数，v30 用户要求「压暗 1.5 倍」后取 0.68 |
-| `mix` | 0.28 | 0–0.60（步长 0.02） | motion_p90, laplacian_var | 第二层重模糊在混合里的比例，越高越糊 |
-| `dissolve_frames` | — | 见全局 | — | 当前只记录到 plan.json，不影响滤镜链 |
+| `gblur_sigma` | 8 | see the global params.yaml | laplacian_var | Base blur radius; the larger the softer |
+| `gamma` | 0.68 | 0.40–1.00 (step 0.02) | V, dark_pct | Dimming factor; 0.68 came out of the reference request to dim by 1.5x |
+| `mix` | 0.28 | 0–0.60 (step 0.02) | motion_p90, laplacian_var | Share of the heavier blur in the blend; the higher it is the softer |
+| `dissolve_frames` | — | see the global params.yaml | — | Currently only recorded in plan.json, it does not drive the filter chain |
 
-## 验收阈值
+## Acceptance thresholds
 
-- `laplacian_var` 显著低于正片：这是「糊」的主证据。
-- `dark_pct < 2%`：压暗过头会出现大片暗场。
-- `motion_p90` 下降：模糊本身会平滑帧间差。
-- 连续抽帧确认持续模糊，不是隔帧清晰。
+- `laplacian_var` clearly lower than in the body of the cut: the main evidence that the frame is soft.
+- `dark_pct < 2%`: dimming too far creates large dark areas.
+- `motion_p90` drops: blurring smooths the frame-to-frame difference.
+- Pull several consecutive frames to confirm the blur is continuous rather than alternating between sharp and soft.
 
-## 已知坑
+## Known pitfalls
 
-- 必须用 `blend all_expr='A*keep+B*mix'`，不可用 `all_mode=screen`——后者连 U/V 一起抬高，整幅染紫。
-- 两层都要先 `format=yuv420p` 再混合，像素格式不一致会直接报错。
-- 两层都是模糊，只是强度不同；如果一层清晰一层糊，会出现用户抱怨的「一下一下闪」。
-- `gblur` 在该 ffmpeg 构建上只收常量 sigma，不能按时间变化。
+- Use `blend all_expr='A*keep+B*mix'`, never `all_mode=screen`; the latter raises the U/V planes and tints the frame.
+- Both layers need `format=yuv420p` before they are blended, otherwise the pixel formats do not match and the filter fails.
+- Both layers are blurred, only at different strengths. One sharp and one soft layer produces exactly the flicker the user complained about.
+- `gblur` on this ffmpeg build only accepts a constant sigma, it cannot vary over time.
 
-## 当前实现边界
+## Current implementation boundary
 
-参数化的双层模糊。v30 的 96 帧交叉溶解序列、每 4 帧一换的连续模糊节奏未迁移，`dissolve_frames` 目前只是 plan.json 里的记录字段，不驱动滤镜链。
+A parameterised double blur. The 96-frame cross-dissolve sequence and the continuous blur rhythm that changes every four frames from the reference cut are not migrated; `dissolve_frames` is currently only a record in plan.json and does not drive the filter chain.

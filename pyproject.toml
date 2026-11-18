@@ -3,26 +3,33 @@
 # This file exists for project metadata, dependency scanners and tooling only.
 [project]
 name = "aicut"
-version = "0.3.0"
-description = "Agent plugin for beat-synced, effects-driven video editing"
+version = "0.4.0"
+description = "Agent skill for beat-synced, effects-driven video editing"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "AICUT contributors" }]
-keywords = ["video", "editing", "beat-sync", "ffmpeg", "agent-skill", "mcp"]
+keywords = ["video", "editing", "beat-sync", "ffmpeg", "agent-skill", "amv", "mcp"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Topic :: Multimedia :: Video",
+    "Natural Language :: English",
+    "Natural Language :: Chinese (Simplified)",
 ]
 dependencies = [
-    "numpy>=1.24",
-    "opencv-python>=4.8",
-    "PyYAML>=6.0",
+    "numpy>=1.24,<3",
+    "opencv-python>=4.8,<5",
+    "PyYAML>=6.0,<7",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0"]
+dev = ["pytest>=7.0,<9"]
+
+[project.urls]
+Homepage = "https://github.com/sanjio3/AICUT"
+Issues = "https://github.com/sanjio3/AICUT/issues"
+Changelog = "https://github.com/sanjio3/AICUT/blob/main/CHANGELOG.md"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

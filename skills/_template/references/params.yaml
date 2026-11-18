@@ -1,9 +1,10 @@
-# TODO 每个可调键都要写 default；有 min/max 就必须写 step。
-# affects 必须指向 lib/qa.py 真实输出的指标名，note 必须写副作用。
+# Every tunable key needs a default; if it has min/max it also needs a step.
+# affects must name a metric that lib/qa.py really outputs, and note must
+# describe the side effect.
 contrast:
   default: 1.10
   min: 0.90
   max: 1.60
   step: 0.02
   affects: [V, dark_pct]
-  note: "TODO 写清调这个值会连带影响什么"
+  note: "TODO describe what else this value changes"

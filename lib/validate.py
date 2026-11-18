@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
-"""skill 自检：不跑全片，用静态检查加一次纯函数调用验证标准 skill 契约。
+"""Skill self-check: no full render needed. Static checks plus one real call
+to the pure function verify the standard skill contract.
 
-标准 skill 目录形态：SKILL.md + scripts/build.py + references/params.yaml。
-基础弱的贡献者写完一个特效后，用 `python aicut.py validate-effect <name>`
-就能知道有没有漏文件、漏字段、写错签名或忘了输出 [out] 标签。
+Standard skill layout: SKILL.md + scripts/build.py + references/params.yaml.
+After writing an effect, a contributor with little experience can run
+`python aicut.py validate-effect <name>` and immediately see whether a file is
+missing, a field is absent, the signature is wrong, or the [out] label was
+forgotten.
 """
 import importlib.util
 import inspect
@@ -17,9 +20,18 @@ from . import catalog
 
 REQUIRED_FILES = ("SKILL.md", "scripts/build.py", "references/params.yaml")
 REQUIRED_META = ("name", "description", "version", "agent_created")
-REQUIRED_SECTIONS = ("渲染前必须回传的参数表", "验收", "已知坑", "当前实现边界")
+REQUIRED_SECTIONS = ("Parameter table to report before rendering",
+                     "Acceptance", "Known pitfalls",
+                     "Current implementation boundary")
 BANNED_CALLS = ("subprocess", "os.system", "cv2.imwrite", "shutil.copy")
 BUILD = os.path.join("scripts", "build.py")
+
+# The contract version a skill has to declare. The kernel injects _geom,
+# _assets and _overlays and expects build() to accept them and to return
+# (extra_inputs, filter_chain_lines). Bumping this number means the kernel
+# changed in a way that older skills cannot satisfy.
+API_VERSION = 1
+REQUIRED_INJECTED = ("_geom", "_assets", "_overlays")
 
 
 def _front(path):
@@ -49,6 +61,17 @@ def check(name, root="skills"):
                 errors.append("frontmatter missing '%s'" % k)
         if any("TODO" in str(t) for t in (meta.get("triggers") or [])):
             warnings.append("triggers still contain TODO placeholders")
+        api = meta.get("api_version")
+        if api is None:
+            errors.append("frontmatter missing 'api_version' (expected %d)"
+                          % API_VERSION)
+        else:
+            try:
+                if int(api) != API_VERSION:
+                    errors.append("api_version %s does not match the kernel "
+                                  "expectation %d" % (api, API_VERSION))
+            except (TypeError, ValueError):
+                errors.append("api_version must be an integer, got %r" % api)
     for sec in REQUIRED_SECTIONS:
         if ("## " + sec) not in sk:
             errors.append("SKILL.md missing section '## %s'" % sec)
@@ -112,6 +135,19 @@ def check(name, root="skills"):
                 errors.append("filter chain must end with [out]")
             elif "[g]" not in "\n".join(lines) and not extra:
                 errors.append("filter chain never consumes the base label [g]")
+            else:
+                # A skill declares which injected keys it relies on, so the
+                # check only fires when a declared key is never read.
+                declared = meta.get("uses") or []
+                if isinstance(declared, str):
+                    declared = [declared]
+                for key in declared:
+                    if key not in REQUIRED_INJECTED:
+                        warnings.append("uses declares unknown injected key "
+                                        "'%s'" % key)
+                    elif key not in src:
+                        errors.append("uses declares '%s' but scripts/build.py "
+                                      "never reads it" % key)
         except Exception as exc:                                # noqa: BLE001
             errors.append("build() raised on a dummy shot: %s" % exc)
 

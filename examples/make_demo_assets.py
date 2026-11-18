@@ -1,42 +1,38 @@
 # -*- coding: utf-8 -*-
-"""生成可自由分发的合成测试素材，让别人 clone 之后零素材也能跑通链路。
+"""Generate freely redistributable synthetic demo clips.
 
-只用 ffmpeg 自带的 lavfi 测试源，不依赖任何受版权保护的画面。
-输出到 AICUT_VIDEOS（默认 ./materials/videos），该目录已被 .gitignore 排除。
+Frames are computed pixel by pixel, so nothing here is tied to copyrighted
+footage and the generator works on any ffmpeg build, including old ones
+without the `lavfi` input device.
+
+Output goes to AICUT_VIDEOS (default ./materials/videos), which is excluded
+from version control. `python aicut.py prepare` calls the same code
+automatically when the user has no media of their own, so running this script
+by hand is optional.
+
+Usage:
+  python examples/make_demo_assets.py
 """
 import os
-import subprocess
+import sys
 
-FF = os.environ.get("AICUT_FFMPEG", "ffmpeg")
-OUT = os.environ.get("AICUT_VIDEOS", "./materials/videos")
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 
-# 三个动态源，保证 Pool 的运动量判定不会把它们全过滤掉。
-SPECS = [
-    ("demo_testsrc2.mp4", "testsrc2=size=640x360:rate=25"),
-    ("demo_testsrc2_fast.mp4", "testsrc2=size=640x360:rate=30"),
-    ("demo_mandelbrot.mp4", "mandelbrot=size=640x360:rate=25"),
-]
+from lib import demo_assets  # noqa: E402
 
 
 def main():
-    os.makedirs(OUT, exist_ok=True)
-    made = 0
-    for name, src in SPECS:
-        path = os.path.join(OUT, name)
-        cmd = [FF, "-y", "-v", "error", "-f", "lavfi", "-i", src,
-               "-t", "8", "-c:v", "libx264", "-pix_fmt", "yuv420p", path]
-        try:
-            subprocess.run(cmd, check=True, stdout=subprocess.PIPE,
-                           stderr=subprocess.PIPE, timeout=120)
-            print("wrote  %s" % path)
-            made += 1
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired,
-                OSError) as exc:
-            print("skip   %s -> %s" % (name, type(exc).__name__))
-    print("%d/%d clips generated in %s" % (made, len(SPECS), OUT))
+    out = os.environ.get("AICUT_VIDEOS", os.path.join(ROOT, "materials", "videos"))
+    ff = demo_assets.ffmpeg_path()
+    made = demo_assets.generate(out, ffmpeg=ff, verbose=True)
+    print("%d/%d clips ready in %s" % (len(made), len(demo_assets.SPECS), out))
     print("no BGM generated: music.load falls back to an equal-tempered grid")
     print("next: python aicut.py prepare")
     print("      python aicut.py plan --run demo --effects base --duration 2")
+    print("      python aicut.py confirm --run demo --hash <hash>")
+    print("      python aicut.py render --run demo")
     return 0 if made else 1
 
 

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""验收层：逐帧代理指标、gate 判定、runs 之间的参数与指标 diff。"""
+"""Acceptance layer: per-frame proxy metrics, gate verdict, and a parameter
+plus metric diff between runs."""
 import io
 import json
 import os

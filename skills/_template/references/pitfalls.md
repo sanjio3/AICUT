@@ -1,23 +1,29 @@
-# <NAME> 参数与踩坑
+# <NAME> — parameters and pitfalls
 
-这个文件是 SKILL.md 的详细版，给需要深入调参或改实现的 Agent / 开发者读。
-SKILL.md 只讲「何时用、怎么用」，细节放这里。
+This file is the detailed version of SKILL.md, for the agent or developer who
+needs to tune parameters deeply or change the implementation. SKILL.md only
+covers when to use the skill and how; the detail lives here.
 
-## 参数表
+## Parameter table
 
-TODO 逐项列出 `references/params.yaml` 里的旋钮：名称、默认值、范围、影响的 qa 指标、
-副作用。与 `python aicut.py params --effect <NAME>` 的输出保持一致。
+TODO list every knob from `references/params.yaml`: name, default, range, the
+qa metrics it affects and its side effect. Keep it consistent with the output
+of `python aicut.py params --effect <NAME>`.
 
-## 验收阈值
+## Acceptance thresholds
 
-TODO 写清这个特效关注的指标与合理区间。参照 `lib/qa.py` 的九项指标命名，
-至少覆盖亮度类（V / dark_pct / bright_pct）与清晰度类（laplacian_var / motion_p90）各一项。
+TODO state the metrics this effect cares about and their sensible ranges.
+Follow the metric names in `lib/qa.py`, and cover at least one brightness
+metric (V / dark_pct / bright_pct) and one sharpness metric (laplacian_var /
+motion_p90).
 
-## 已知坑
+## Known pitfalls
 
-TODO 写这本机 ffmpeg 构建的限制、素材要求、容易踩的坑。全局限制见 `lib/doctor.py`。
+TODO write the limits of the ffmpeg build in use, the material requirements
+and the easy mistakes. Global limits live in `lib/doctor.py`.
 
-## 当前实现边界
+## Current implementation boundary
 
-TODO 写清哪些参数还没真正生效、哪些视觉效果尚未实现、和参考片差在哪里。
-不许留空，不许把简化实现说成完整实现。
+TODO state which parameters do not take effect yet, which visual results are
+not implemented and how this differs from the reference cut. Do not leave it
+empty, and do not describe a simplified implementation as a complete one.

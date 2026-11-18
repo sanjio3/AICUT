@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""卡点层。优先读已分析好的 music JSON；缺失时用等距网格兜底（精度较低）。"""
+"""Beat layer. Prefers an analysed music JSON; falls back to an equal-tempered
+grid when none is available (lower precision)."""
 import io
 import json
 import math
@@ -14,7 +15,8 @@ class Grid(object):
         self.source = source
 
     def frames(self, fps, m0, dur):
-        """窗口内的拍点帧号，浮点秒在这里才换算成帧。"""
+        """Beat frame numbers inside the window; floating point seconds are
+        converted to frames only here."""
         out = []
         end = m0 + dur + 1e-6
         for b in self.beats:
@@ -34,7 +36,7 @@ class Grid(object):
         return sorted(set(out))
 
     def beat_error_frames(self, cut_frames, fps):
-        """渲后回测：每个切点距最近拍点的帧差。"""
+        """Post-render check: frame distance from every cut to the nearest beat."""
         if not self.beats:
             return []
         m0 = self._m0
@@ -51,8 +53,10 @@ class Grid(object):
 
 def load(cfg):
     pr = cfg["project"]
-    # prepare 自动分析出的 music.json 优先于人工指定的 AICUT_MUSIC_JSON；
-    # 两者都没有时才退到等距网格，保证零预处理也能跑通链路。
+    # The music.json produced by prepare takes priority over a manually
+    # supplied AICUT_MUSIC_JSON. Only when neither exists does the beat grid
+    # fall back to an equal-tempered grid, so the pipeline still runs with
+    # zero preprocessing.
     cache = os.path.join(cfg["paths"]["runs"], "_cache", "music.json")
     path = cache if os.path.exists(cache) else cfg["paths"]["music_json"]
     m0 = float(pr["m0"])
@@ -74,7 +78,8 @@ def load(cfg):
 
 
 def density(t):
-    """每拍切几刀的曲线，沿用 v30 实测：两拍一刀 → 每拍一刀 → 每拍两刀 → 收尾。"""
+    """How many cuts per beat, following the shape measured in the reference
+    cut: two per beat, then one per beat, then two per beat, then a tail."""
     if t < 8.0:
         return 0.5
     if t < 14.0:

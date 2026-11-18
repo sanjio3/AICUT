@@ -1,52 +1,87 @@
 ---
 name: aicut-fire-transition
 description: >-
-  火焰转场特效：把火焰叠加素材按拍点吸附到镜头切点上，同时压暗底图让火焰成为视觉焦点。
-  This skill should be used when the user asks for 火焰转场 / 燃烧转场 / fire transition，
-  或抱怨「火焰太暗」「火焰过曝」需要调参时。渲染前必须回传可调参数表，用户确认后才渲染。
+  Fire transition effect: overlays flame footage on top of the cut, snapped to
+  the beat, with the base plate dimmed so the flame reads as the focal point.
+  This skill should be used when the user asks for a 火焰转场 / 燃烧转场 /
+  fire transition / fire wipe / burning transition, or complains that the fire
+  is too dark or blown out. The tunable parameter table must be reported
+  before rendering, and the user confirms before anything is rendered.
 version: 0.1.0
+api_version: 1
+uses: [_geom, _assets, _overlays]
 agent_created: true
 allowed-tools: Bash, Read, Write, Edit
-triggers: ["火焰转场", "燃烧转场", "fire transition", "火焰太暗", "火焰过曝"]
+triggers: ["火焰转场", "燃烧转场", "fire transition", "fire wipe", "burning transition", "flame cut", "火焰太暗", "火焰过曝"]
 ---
 
-# 火焰转场
+# Fire transition
 
-镜头级的转场特效：取一段火焰素材循环播放，与镜头画面做逐平面加权混合，底图按系数压暗，火焰亮度按增益抬高，切点由 `lib/plan.py` 吸附到最近拍点。
+A shot-level transition effect: a flame clip is looped, mixed into the shot
+with per-plane weighted blending, the base plate is dimmed by a factor and the
+flame brightness is raised by a gain. Cut points are snapped to the nearest
+beat by `lib/plan.py`.
 
-## 何时使用
+## When to use
 
-用户说出上面 `triggers` 里的词，或要求「切点处加火」「燃烧感转场」时加载本 skill。只加载本目录，不要通读其它 skill。
+Load this skill when the user says any of the words in `triggers`, or asks for
+a burning or flaming cut. Load only this directory.
 
-## 怎么用
+## How to use
 
-1. 所有命令都在 AICUT 仓库根目录执行（`$AICUT_ROOT`）。先跑 `python aicut.py params --effect fire-transition`，把参数表逐项回传给用户（当前值、范围、影响指标、副作用）。
-2. 用户确认后写入生效开关：`python aicut.py plan --run <id> --effects fire-transition`。
-3. `python aicut.py render --run <id>` 出片，`python aicut.py qa --run <id>` 取指标。
-4. 参数含义与验收阈值见 `references/pitfalls.md`，旋钮定义见 `references/params.yaml`。
+1. Run every command from the AICUT repository root (`$AICUT_ROOT`). Start
+   with `python aicut.py params --effect fire-transition` and report the
+   parameter table to the user: current value, range, affected metrics and
+   side effects.
+2. After the user answers, write the effect name into the switch that
+   actually enables it: `python aicut.py plan --run <id> --effects fire-transition`.
+3. `python aicut.py render --run <id>` to render, then `python aicut.py qa --run <id>`
+   for the metrics.
+4. Parameter meanings and acceptance thresholds live in
+   `references/pitfalls.md`; the knob definitions live in `references/params.yaml`.
 
-## 渲染前必须回传的参数表
+## Parameter table to report before rendering
 
-执行 `python aicut.py params --effect fire-transition` 拿到合并后的当前值，逐项回传：当前值、范围、影响的观测指标、副作用。用户未明确表态时才使用默认值。
+Execute `python aicut.py params --effect fire-transition` to get the merged
+current values and report each one: current value, range, affected metrics,
+side effects. Use defaults only when the user has not stated a preference.
 
-- `clip` 默认 fire01，可选 fire01 / fire02，决定火焰形状。
-- `trim_start` 默认 0.55s，范围 0–1.5s，太早取到黑场。
-- `base_dim` 默认 0.68，范围 0.40–1.00，压暗底图，主要影响 V 与 dark_pct。
-- `flame_gain` 默认 1.95，范围 0.80–2.60，主要影响 bright_pct，超过 2.4 容易过曝。
-- `chroma_mix` 默认 0.28，只改 U/V 平面，不改亮度。
-- `beat_align` 默认开，由 `lib/plan.py` 消费，关掉后切点不再吸附拍点。
-- `hue` 锁定 6° 不可调。
+- `clip` defaults to fire01, options fire01 / fire02, decides the flame shape.
+- `trim_start` defaults to 0.55s, range 0–1.5s, too early lands on black frames.
+- `base_dim` defaults to 0.68, range 0.40–1.00, dims the base plate, mainly
+  affects V and dark_pct.
+- `flame_gain` defaults to 1.95, range 0.80–2.60, mainly affects bright_pct;
+  above 2.4 it blows out easily.
+- `chroma_mix` defaults to 0.28, changes only the U/V planes, not brightness.
+- `beat_align` defaults to on, consumed by `lib/plan.py`; when off, cuts stop
+  snapping to beats.
+- `hue` is locked at 6°.
 
-参数优先级从高到低是镜头级覆盖、本目录 `references/params.yaml`、全局 `params.yaml`、代码内置默认。调 `flame_gain` 只会让 `effect == "fire-transition"` 的镜头缓存失效，其余镜头直接复用。
+Precedence, highest first: per-shot override, this skill's
+`references/params.yaml`, the global `params.yaml`, built-in defaults.
+Adjusting `flame_gain` only invalidates the cache for shots whose effect is
+fire-transition; every other shot is reused.
 
-## 验收
+## Acceptance
 
-渲完执行 `python aicut.py qa --run <id>`，本特效关注 `bright_pct < 8%`、`dark_pct < 2%`、`V` 在 100–160 之间；全局 gate 另见根 `params.yaml`。改参数后用 `python aicut.py diff --a <id1> --b <id2>` 回传「改了哪几个键、指标怎么变」。
+After rendering run `python aicut.py qa --run <id>`. This effect cares about
+`bright_pct < 8%`, `dark_pct < 2%` and `V` between 100 and 160; the global
+gate thresholds are in the root `params.yaml`. After changing a parameter use
+`python aicut.py diff --a <id1> --b <id2>` to report which keys changed and
+how the metrics moved.
 
-## 已知坑
+## Known pitfalls
 
-详见 `references/pitfalls.md`。要点：`blend all_mode=screen` 会连 U/V 一起抬高，整幅画面染紫，必须用逐平面 `c0_expr` 改亮度、`c1_expr`/`c2_expr` 改色度；火焰镜头不要做色相旋转，橙红会被染成紫色；底层素材用 `-stream_loop -1` 兜底，因为火焰 mov 往往短于镜头时长。
+See `references/pitfalls.md`. In short: `blend all_mode=screen` raises the U/V
+planes as well and tints the whole frame purple, so use per-plane `c0_expr`
+for luma and `c1_expr`/`c2_expr` for chroma. Do not rotate hue on fire shots,
+orange turns purple. Use `-stream_loop -1` as a fallback because flame clips
+are often shorter than the shot.
 
-## 当前实现边界
+## Current implementation boundary
 
-本 skill 是 0.1.0 的可运行实现：逐平面叠加、素材轮替、参数化完整。v30 里的 HUD 扫描光带、霓虹网格叠加、不规则蒙版尚未迁移。缺 overlays 素材时 `scripts/build.py` 会自动降级成轻度提亮，保证链路不中断，并在 QA 的 V 上体现出来。
+This is the runnable 0.1.0 implementation: per-plane blending, clip rotation
+and full parameterisation. The HUD scan band, neon grid overlay and irregular
+mask from the reference cut are not migrated. When overlay material is
+missing, `scripts/build.py` degrades to a mild brightening so the pipeline
+does not break, and the difference shows up in the QA `V` value.

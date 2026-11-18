@@ -91,25 +91,26 @@ effects:
       note: "硬切加模糊不等于连续变换；96 帧交叉溶解把帧差 p90 从 45.7 降到 15.7"
 
 # 用户口语 → 参数路径。AI 收到反馈先查这里，不要凭感觉改代码。
+# 用户口语到参数路径的映射。每条同时给中英文说法，中文用户与英文用户都能命中。
 attribution:
-  - say: ["太晃", "一直晃", "画面抖", "开头晃"]
+  - say: ["太晃", "一直晃", "画面抖", "开头晃", "too shaky", "shaking", "too much shake", "jittery"]
     params: [card.shake_hz, card.push_px]
-    hint: "降抖动后必须复测 dup_pct，必要时把 push_px 加到 22"
-  - say: ["素材重复", "老是那几个", "不够的从长素材取"]
+    hint: "降抖动后必须复测 dup_pct，必要时把 push_px 加到 22 / Lower the shake, then re-check dup_pct and raise push_px to 22 if needed"
+  - say: ["素材重复", "老是那几个", "不够的从长素材取", "too repetitive", "same clips again", "repetitive", "looks the same"]
     params: [pool.dhash_th, pool.quota]
-    hint: "先看 repeat_ratio，再决定放宽去重还是提高配额"
-  - say: ["太模糊", "看不出是什么", "糊成一团"]
+    hint: "先看 repeat_ratio，再决定放宽去重还是提高配额 / Check repeat_ratio first, then relax de-duplication or raise the quota"
+  - say: ["太模糊", "看不出是什么", "糊成一团", "too blurry", "too blurry to see", "mushy", "cannot see the image"]
     params: [ending-dissolve.gblur_sigma]
-    hint: "用 laplacian_var 复核，不要只看 V"
-  - say: ["一下一下闪", "看不出连续感", "不够顺"]
+    hint: "用 laplacian_var 复核，不要只看 V / Verify with laplacian_var, not V alone"
+  - say: ["一下一下闪", "看不出连续感", "不够顺", "flickering", "not smooth", "jumpy", "stuttering"]
     params: [ending-dissolve.dissolve_frames]
-    hint: "检查 cut_rate 是否降到 0，motion_p90 是否稳定"
-  - say: ["火焰看不清", "火焰太暗", "火焰过曝"]
+    hint: "检查 cut_rate 是否降到 0，motion_p90 是否稳定 / Check that cut_rate drops to 0 and motion_p90 stays stable"
+  - say: ["火焰看不清", "火焰太暗", "火焰过曝", "fire too dark", "fire too bright", "flame is blown out", "can't see the fire"]
     params: [fire-transition.base_dim, fire-transition.flame_gain]
-    hint: "逐平面 blend，不要用 all_mode=screen"
-  - say: ["卡点不准", "切点没踩上"]
+    hint: "逐平面 blend，不要用 all_mode=screen / Blend per plane, never with all_mode=screen"
+  - say: ["卡点不准", "切点没踩上", "off beat", "cuts are not on the beat", "sync is off"]
     params: [project.m0, project.drop_at]
-    hint: "渲后回测每个切点距最近拍点的帧差，阈值 3 帧；m0 是 BGM 入点"
+    hint: "渲后回测每个切点距最近拍点的帧差，阈值 3 帧；m0 是 BGM 入点 / Measure each cut against the nearest beat after rendering, threshold is 3 frames; m0 is the BGM entry point"
 
 # gate 只报警不自动回退。主观审美仍需人工看片。
 gates:

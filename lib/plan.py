@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""决策层：参数合并与归因表、plan.json 生成。"""
+"""Decision layer: parameter merging, the attribution table, and plan.json."""
 import io
 import os
 
@@ -36,7 +36,8 @@ def _meta(node, prefix=""):
 
 
 def _local(cfg, effect_id):
-    """skill 局部参数，缺失时返回空。标准 skill 把参数放在 references/params.yaml。"""
+    """Skill-local parameters, empty when absent. A standard skill keeps them
+    in references/params.yaml."""
     if not effect_id or effect_id == "base":
         return {}
     path = os.path.join("skills", effect_id, "references", "params.yaml")
@@ -47,7 +48,8 @@ def _local(cfg, effect_id):
 
 
 def merged(cfg, effect_id=None, overrides=None, all_effects=False):
-    """把 {default:...} 展开成标量。优先级：overrides > effect 局部 > 全局 > 内置。"""
+    """Expand {default:...} into scalars. Precedence: overrides > skill-local >
+    global > built-in defaults."""
     scalars = {g: {k: _val(v) for k, v in group.items()}
                for g, group in (cfg.get("effects") or {}).items()}
     if effect_id and effect_id != "base":
@@ -70,7 +72,8 @@ def merged(cfg, effect_id=None, overrides=None, all_effects=False):
 
 
 def param_table(cfg, effect_id=None, overrides=None):
-    """第 3 步用：渲染前回传给用户的可调参数表。"""
+    """Step 3 of the workflow: the tunable parameter table shown to the user
+    before rendering."""
     groups = _meta(cfg.get("effects") or {})
     if effect_id and effect_id != "base":
         groups.update(_meta(_local(cfg, effect_id), effect_id))
@@ -92,7 +95,8 @@ def param_table(cfg, effect_id=None, overrides=None):
 
 
 def attribute(cfg, words):
-    """归因表：用户口语 → 参数路径。返回命中的条目列表。"""
+    """Attribution table: user speech to parameter paths. Returns the matched
+    entries."""
     hits = []
     for row in cfg.get("attribution") or []:
         if any(w in words for w in row.get("say", [])):
@@ -112,8 +116,9 @@ def build(cfg, grid, pool, overrides=None, duration=None, effects=None):
     total = int(total_t * fps)
     m0 = float(pr["m0"])
 
-    # 用户点名哪几个特效，就只用哪几个。路由表命中的结果必须传到这里，
-    # 否则「加载了子 skill」和「真的用了这个特效」是两回事。
+    # When the user names a few effects, only those are used. Whatever the
+    # router matched has to be passed in here, otherwise "the sub-skill was
+    # loaded" and "the effect is actually used" are two different things.
     sel = effects
     if sel is None:
         sel = (overrides or {}).get("selection.effects")

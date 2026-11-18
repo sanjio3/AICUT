@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: smoke and validate (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Compile all sources
+        run: python -m compileall -q aicut.py install.py lib skills tests examples
+
+      - name: Run the smoke test
+        run: python tests/smoke.py
+
+      - name: Validate every skill
+        run: python aicut.py validate-effect --all
+
+      - name: Package every skill
+        run: python aicut.py package
+
+      - name: Install the skills into a scratch directory
+        run: python aicut.py install --project "$RUNNER_TEMP/aicut-project"
+
+  no-secrets:
+    name: no local paths or secrets in tracked files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan for local paths, credentials and stray media
+        run: |
+          set -e
+          if git grep -nIE '(C:\\\\Users|/Users/|/home/[a-z]|AppData|password\s*=|api[_-]?key\s*=|BEGIN [A-Z ]*PRIVATE KEY)' -- . \
+             ':(exclude)docs/demo/*' ':(exclude).github/workflows/*'; then
+            echo "::error::found a local path or a credential-like string"
+            exit 1
+          fi
+          echo "clean"
+
+      - name: Verify no media files are tracked
+        run: |
+          set -e
+          tracked=$(git ls-files '*.mp4' '*.mov' '*.mkv' '*.webm' | grep -v '^docs/demo/' || true)
+          if [ -n "$tracked" ]; then
+            echo "::error::media files are tracked outside docs/demo:"
+            echo "$tracked"
+            exit 1
+          fi
+          echo "clean"
