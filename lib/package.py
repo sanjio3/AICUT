@@ -281,7 +281,12 @@ def build(name, out_dir, force=False, market=False, with_kernel=False,
     meta = _front(skill_dir)
     stem = str(meta.get("name") or name)
     os.makedirs(out_dir, exist_ok=True)
+    # The archive shape is part of the file name, so a root-layout archive and
+    # a folded one never end up as two files with the same name that nobody
+    # can tell apart.
     suffix = "-market" if market else ""
+    if fold:
+        suffix += "-folded"
     out_path = os.path.join(out_dir, "%s%s.zip" % (stem, suffix))
     # Some importers expect the archive to contain a folder named after the
     # skill, others expect SKILL.md at the root. The fold option produces the
