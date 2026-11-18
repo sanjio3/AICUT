@@ -15,6 +15,8 @@ import re
 
 import yaml
 
+from . import paths
+
 FRONT = re.compile(r"\A---\s*\n(.*?)\n---\s*\n", re.S)
 SKIP_PREFIX = ("_", ".")
 ROOT = "skills"
@@ -50,8 +52,34 @@ def _derive_triggers(meta):
     return out
 
 
-def scan(root=ROOT):
+def scan(root=None):
+    """Scan every discoverable skill.
+
+    The root argument is kept for compatibility; when it is None the layout
+    is resolved through lib.paths, which handles both the repository layout
+    and the packaged single-skill layout.
+    """
     out = {}
+    if root is None:
+        for name in paths.list_skills():
+            d = paths.skill_dir(name)
+            if not d:
+                continue
+            sk = os.path.join(d, "SKILL.md")
+            if not os.path.exists(sk):
+                continue
+            meta = parse_front(sk)
+            out[name] = {
+                "name": meta.get("name") or name,
+                "triggers": _derive_triggers(meta),
+                "description": str(meta.get("description") or "").strip(),
+                "version": str(meta.get("version") or "0.0.0"),
+                "agent_created": bool(meta.get("agent_created")),
+                "path": sk.replace("\\", "/"),
+                "has_scripts": os.path.exists(os.path.join(d, "scripts")),
+                "has_references": os.path.exists(os.path.join(d, "references")),
+            }
+        return out
     if not os.path.isdir(root):
         return out
     for name in sorted(os.listdir(root)):
@@ -75,7 +103,7 @@ def scan(root=ROOT):
     return out
 
 
-def routes(root=ROOT):
+def routes(root=None):
     """Map trigger words (lower case) to skill names, and report duplicates."""
     table, conflicts = {}, []
     for name, meta in scan(root).items():
@@ -90,7 +118,7 @@ def routes(root=ROOT):
     return table, conflicts
 
 
-def lookup(words, root=ROOT):
+def lookup(words, root=None):
     """Trigger words found in the user's wording to the matching skill names,
     order preserving and deduplicated. For debugging reference only."""
     table, _ = routes(root)
@@ -102,7 +130,7 @@ def lookup(words, root=ROOT):
     return hits
 
 
-def report(root=ROOT):
+def report(root=None):
     items = scan(root)
     table, conflicts = routes(root)
     lines = ["%d skills, %d triggers (host routes by description)" %

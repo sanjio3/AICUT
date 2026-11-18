@@ -17,11 +17,20 @@ Source media
   reason.
 
 lib/beat.py
-  This module is derived from an internal script (music_structure.py) belonging
-  to the author's ai-edit-kit workspace. Before publishing this repository,
-  confirm that you have the right to relicense that code under MIT; if not,
-  replace it with an independently written beat detector or add the original
-  copyright line here.
+  This module was adapted from music_structure.py, a script written by the
+  author in their own ai-edit-kit workspace on 2026-11-09. That workspace is
+  not a git repository, holds no third-party code, and has never been
+  published or distributed; the script was written from scratch for the
+  author's own use. The author is therefore the sole copyright holder of the
+  original work and relicenses it under the MIT license in LICENSE.
+
+  The adaptation consists of three changes, all mechanical: a coding header, a
+  removal of the hardcoded local ffmpeg path in favour of an injected one, and
+  a parameter added to decode() and analyse() so the ffmpeg executable can be
+  passed in. The detection algorithm itself is unchanged.
+
+  If this ever stops being true, replace the module with an independently
+  written beat detector or add the original copyright line here.
 
 Reference material
   The Skill layout and the "one effect, one SKILL.md" pattern were informed by

@@ -153,12 +153,48 @@ def main():
         ok = h1 != h2 and len(h1) == 16
         return ok, "%s vs %s" % (h1, h2)
 
+    def c_standalone():
+        """A packaged archive must run on its own, without the repository."""
+        import shutil
+        import subprocess
+        import tempfile
+        import zipfile
+
+        from lib import package as pm
+        tmp = tempfile.mkdtemp(prefix="aicut_standalone_")
+        try:
+            path, problems = pm.build("manga-split", tmp, market=True,
+                                     with_kernel=True)
+            if path is None:
+                return False, "; ".join(problems)
+            work = os.path.join(tmp, "unpacked")
+            os.makedirs(work, exist_ok=True)
+            with zipfile.ZipFile(path) as zf:
+                zf.extractall(work)
+            names = zipfile.ZipFile(path).namelist()
+            for needed in ("SKILL.md", "aicut.py", "lib/plan.py"):
+                if needed not in names:
+                    return False, "archive is missing %s" % needed
+            env = dict(os.environ)
+            env["PYTHONPATH"] = work
+            proc = subprocess.run(
+                [sys.executable, "aicut.py", "catalog"],
+                cwd=work, env=env, capture_output=True, text=True, timeout=120)
+            if proc.returncode != 0:
+                return False, (proc.stderr or proc.stdout)[-200:]
+            if "manga-split" not in proc.stdout:
+                return False, "the packaged skill was not discovered"
+            return True, "archive runs standalone (%d files)" % len(names)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
     check("catalog scans skills without trigger conflicts", c_catalog)
     check("user phrase maps to the right effects", c_lookup)
     check("all built-in skills pass validate-effect", c_validate)
     check("each skill follows the standard layout", c_structure)
     check("installer discovers named skills", c_install)
     check("every skill packages into a valid archive", c_package)
+    check("a packaged archive runs on its own", c_standalone)
     check("plan hash changes when the plan changes", c_confirm)
     check("selection.effects really restricts the rotation", c_selection)
     check("parameter override wins over local defaults", c_merge)

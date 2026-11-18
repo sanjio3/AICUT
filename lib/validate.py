@@ -17,6 +17,7 @@ import re
 import yaml
 
 from . import catalog
+from . import paths
 
 REQUIRED_FILES = ("SKILL.md", "scripts/build.py", "references/params.yaml")
 REQUIRED_META = ("name", "description", "version", "agent_created")
@@ -38,12 +39,13 @@ def _front(path):
     return catalog.parse_front(path)
 
 
-def check(name, root="skills"):
+def check(name, root=None):
     errors, warnings = [], []
-    d = os.path.join(root, name)
-    if not os.path.isdir(d):
+    d = os.path.join(root, name) if root else paths.skill_dir(name)
+    if not d or not os.path.isdir(d):
         return {"name": name, "ok": False,
-                "errors": ["directory not found: %s" % d], "warnings": []}
+                "errors": ["directory not found: %s" % (d or name)],
+                "warnings": []}
 
     for fn in REQUIRED_FILES:
         if not os.path.exists(os.path.join(d, fn)):
@@ -163,15 +165,21 @@ def check(name, root="skills"):
             "warnings": warnings}
 
 
-def check_all(root="skills"):
+def check_all(root=None):
     out = []
-    if not os.path.isdir(root):
+    if root:
+        if not os.path.isdir(root):
+            return out
+        for name in sorted(os.listdir(root)):
+            if name.startswith(("_", ".")):
+                continue
+            if os.path.isdir(os.path.join(root, name)):
+                out.append(check(name, root))
         return out
-    for name in sorted(os.listdir(root)):
+    for name in paths.list_skills():
         if name.startswith(("_", ".")):
             continue
-        if os.path.isdir(os.path.join(root, name)):
-            out.append(check(name, root))
+        out.append(check(name))
     return out
 
 

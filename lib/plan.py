@@ -35,12 +35,32 @@ def _meta(node, prefix=""):
     return out
 
 
+from . import paths
+
+
+def skill_dir(effect_id):
+    """Locate a skill directory.
+
+    Delegates to lib.paths so the repository layout and the packaged layout
+    stay in one place. In the packaged layout the effect may be addressed by
+    its directory name or by the name in its frontmatter, so the name is
+    checked before the directory is resolved.
+    """
+    if effect_id and effect_id != "base" and paths.is_root_layout():
+        root_name = paths._root_skill_name()
+        if root_name and (root_name == effect_id or
+                          root_name.endswith("-" + effect_id)):
+            return "."
+    return paths.skill_dir(effect_id)
+
+
 def _local(cfg, effect_id):
     """Skill-local parameters, empty when absent. A standard skill keeps them
     in references/params.yaml."""
-    if not effect_id or effect_id == "base":
+    d = skill_dir(effect_id)
+    if not d:
         return {}
-    path = os.path.join("skills", effect_id, "references", "params.yaml")
+    path = os.path.join(d, "references", "params.yaml")
     if not os.path.exists(path):
         return {}
     with io.open(path, "r", encoding="utf-8") as fh:
@@ -56,8 +76,8 @@ def merged(cfg, effect_id=None, overrides=None, all_effects=False):
         local = _local(cfg, effect_id)
         scalars.setdefault(effect_id, {}).update(
             {k: _val(v) for k, v in local.items()})
-    if all_effects and os.path.isdir("skills"):
-        for name in sorted(os.listdir("skills")):
+    if all_effects:
+        for name in paths.list_skills():
             if name.startswith(("_", ".")) or name == effect_id:
                 continue
             scalars.setdefault(name, {}).update(
@@ -128,7 +148,7 @@ def build(cfg, grid, pool, overrides=None, duration=None, effects=None):
         sel = [x.strip() for x in sel.split(",") if x.strip()]
     seq = list(sel) if sel else list(SEQ)
     for name in seq:
-        if name != "base" and not os.path.isdir(os.path.join("skills", name)):
+        if name != "base" and not paths.skill_dir(name):
             raise RuntimeError("unknown effect: %s" % name)
     rotating = [e for e in seq if e != "ending-dissolve"] or ["base"]
     has_ending = "ending-dissolve" in seq

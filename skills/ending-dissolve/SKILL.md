@@ -1,5 +1,7 @@
 ---
 name: aicut-ending-dissolve
+display_name: "结尾溶解"
+display_name_en: "Ending dissolve"
 description: >-
   Ending dissolve effect: mixes two blur strengths by a ratio to produce a
   continuously softening and dimming ending rather than a flickering one.

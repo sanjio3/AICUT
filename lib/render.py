@@ -9,13 +9,15 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from . import assets
+from . import paths
 from .ff import encode, run
 
 
 def load_effect(name):
-    path = os.path.abspath(os.path.join("skills", name, "scripts", "build.py"))
-    if not os.path.exists(path):
+    path = paths.build_script(name)
+    if not path:
         raise RuntimeError("effect not found: %s" % name)
+    path = os.path.abspath(path)
     spec = importlib.util.spec_from_file_location("aicut_effect_%s" % name, path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -27,8 +29,8 @@ def effect_code_hash(name):
     editing the code would not show up in the output."""
     if name == "base":
         return "base"
-    p = os.path.abspath(os.path.join("skills", name, "scripts", "build.py"))
-    if not os.path.exists(p):
+    p = paths.build_script(name)
+    if not p:
         return "missing"
     with open(p, "rb") as fh:
         return hashlib.md5(fh.read()).hexdigest()[:10]

@@ -1,5 +1,7 @@
 ---
 name: aicut-manga-split
+display_name: "漫画分格"
+display_name_en: "Comic panel split"
 description: >-
   Comic panel split effect: cuts one shot into four offset panels and draws
   white cross dividers, two panels desaturated and two highly saturated, for a

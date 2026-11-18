@@ -1,5 +1,7 @@
 ---
 name: aicut-fire-transition
+display_name: "火焰转场"
+display_name_en: "Fire transition"
 description: >-
   Fire transition effect: overlays flame footage on top of the cut, snapped to
   the beat, with the base plate dimmed so the flame reads as the focal point.
