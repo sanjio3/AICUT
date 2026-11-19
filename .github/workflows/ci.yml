@@ -80,7 +80,7 @@ jobs:
           echo "clean"
 
       - name: Check the secret scan still catches a real leak
-        run: bash tools/check_secret_scan.py
+        run: python tools/check_secret_scan.py
 
       - name: Verify no media files are tracked
         run: |
