@@ -61,12 +61,26 @@ jobs:
       - name: Scan for local paths, credentials and stray media
         run: |
           set -e
-          if git grep -nIE '(C:\\\\Users|/Users/|/home/[a-z]|AppData|password\s*=|api[_-]?key\s*=|BEGIN [A-Z ]*PRIVATE KEY)' -- . \
-             ':(exclude)docs/demo/*' ':(exclude).github/workflows/*'; then
+          # The credential patterns look for a hardcoded literal, not for the
+          # word itself. Code that reads a credential mentions "password="
+          # while parsing it, and that is not a leak. The pattern requires a
+          # quoted string or a known token prefix.
+          #
+          # The pattern is verified by tools/posix_ere_test.py, which runs this
+          # same git grep against probe files. Do not change it without
+          # running that first: a pattern that matches nothing looks exactly
+          # like a clean tree.
+          if git grep -niE '(C:\\\\Users|/Users/|/home/[a-z]|AppData|BEGIN [A-Z ]*PRIVATE KEY|(ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|glpat-|xox[baprs]-|sk-[A-Za-z0-9]|AKIA|AIza|ASIA)[A-Za-z0-9_+./-]{10,}|(password|passwd|secret|token|api[_-]?key|credential|auth)[a-zA-Z_-]*[[:space:]]*[:=][[:space:]]*["'"'"'][^"'"'"'\s]{8,}["'"'"'])' -- . \
+             ':(exclude)docs/demo/*' ':(exclude).github/workflows/*' \
+             ':(exclude)tools/posix_ere_test.py' \
+             ':(exclude)tools/check_secret_scan.py'; then
             echo "::error::found a local path or a credential-like string"
             exit 1
           fi
           echo "clean"
+
+      - name: Check the secret scan still catches a real leak
+        run: bash tools/check_secret_scan.py
 
       - name: Verify no media files are tracked
         run: |
