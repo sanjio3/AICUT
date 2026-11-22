@@ -1,0 +1,23 @@
+# crt-scanline 局部默认值。每个可调键都有 default；有 min/max 就有 step。
+# affects 只用 lib/qa.py 真实输出的指标名，note 写清副作用。
+line_gap:
+  default: 6
+  min: 3
+  max: 12
+  step: 1
+  affects: [laplacian_var, dark_pct]
+  note: "线间距低于 3px 会出摩尔纹、laplacian_var 虚高"
+line_alpha:
+  default: 0.25
+  min: 0.10
+  max: 0.7
+  step: 0.05
+  affects: [V, dark_pct]
+  note: "默认 0.25 线条偏淡；调到 0.4 以上线条明显但会明显压暗画面，暗素材慎用"
+scan_speed:
+  default: 300
+  min: 60
+  max: 600
+  step: 20
+  affects: [dup_pct, motion_p50]
+  note: "扫描速度低于 60 时相邻帧位移太小、dup_pct 会抬头"
