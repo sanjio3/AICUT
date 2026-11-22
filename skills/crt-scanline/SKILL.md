@@ -2,14 +2,7 @@
 name: aicut-crt-scanline
 display_name: "老电视扫描线"
 display_name_en: "CRT scanline"
-description: >-
-  CRT scanline effect: overlays fine horizontal dark scanlines across the whole
-  frame and sweeps one soft bright band from top to bottom at a constant speed,
-  with a mild contrast and saturation lift, for a CRT / old VHS / surveillance
-  monitor look. This skill should be used when the user asks for 老电视 /
-  扫描线 / CRT / 复古电视 / 录像带质感 / 监控画面 / crt scanline / retro tv /
-  scan lines. The tunable parameter table must be reported before rendering,
-  and the user confirms before anything is rendered.
+description: "CRT scanline effect: overlays fine horizontal dark scanlines across the whole frame and sweeps one soft bright band from top to bottom at a constant speed, with a mild contrast and saturation lift, for a CRT / old VHS / surveillance monitor look. This skill should be used when the user asks for 老电视 / 扫描线 / CRT / 复古电视 / 录像带质感 / 监控画面 / crt scanline / retro tv / scan lines. The tunable parameter table must be reported before rendering, and the user confirms before anything is rendered."
 description_zh: "老电视扫描线特效：整幅画面铺上细密横向暗扫描线，一条柔和亮带自上而下匀速扫过，配合轻度对比度与饱和度提升，做出 CRT / 老录像带 / 监控屏观感。当用户说老电视、扫描线、CRT、复古电视、录像带质感、监控画面、crt scanline、retro tv、scan lines 时使用。渲染前必须回传可调参数表，用户确认后才渲染。"
 version: 0.1.0
 api_version: 1
